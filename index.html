@@ -158,6 +158,31 @@ button.big{font-size:17px;padding:10px 18px}
 .stl{font-size:12px;font-weight:600;margin-top:4px}
 .teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;max-width:800px;margin:0 auto}
 .teams button{font-size:20px;padding:22px 10px;font-family:'DM Serif Display',serif}
+.tg{display:flex;gap:10px;align-items:flex-start}
+.gridmode .tg{flex:1;display:grid;gap:8px;min-width:0}
+.gridmode .tg .col{height:calc((100vh - 215px)/2);min-height:250px;overflow:hidden}
+.gridmode .col.pal{max-height:calc(100vh - 200px)}
+.tl{display:flex;flex-direction:column;gap:6px;position:relative}
+.gridmode .tl,.projo .tl{flex:1;overflow-y:auto;min-height:40px;padding:2px}
+.projo{display:grid;gap:10px}
+.projo .col{height:calc((100vh - 110px)/2);min-height:220px;overflow:hidden}
+.photos{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.phot{position:relative}
+.phot img,.thumbs img{width:84px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--brd);cursor:zoom-in;display:block}
+.phot button{position:absolute;top:2px;right:2px;padding:0 5px}
+.addph{border:1px dashed var(--brd);border-radius:8px;padding:18px 10px;cursor:pointer;color:var(--mut);font-size:13px}
+.thumbs{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0}
+.lib img{width:100%;height:60px;object-fit:cover;border-radius:5px;margin-top:4px}
+.splash{max-width:860px;margin:6vh auto;text-align:center}
+.splash h2{font-size:34px;margin-bottom:6px}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:28px 0 16px}
+.choices button{padding:34px 18px;border-radius:18px;border:2px solid var(--brd);background:var(--sur);box-shadow:var(--sh)}
+.choices button:hover{border-color:var(--acc);transform:translateY(-2px)}
+.choices .ic{font-size:64px;display:block}
+.choices b{font:400 30px 'DM Serif Display',serif;display:block;margin:8px 0}
+.choices span.d{color:var(--mut);font-size:14px}
+.dbx{font-size:12px;border:1px solid var(--brd);border-radius:14px;padding:3px 9px;background:var(--sur);cursor:pointer;white-space:nowrap}
+@media (max-width:700px){.choices{grid-template-columns:1fr}}
 @media (max-width:700px){header h1{font-size:18px}.col{flex-basis:200px}}
 </style>
 </head>
@@ -166,7 +191,7 @@ button.big{font-size:17px;padding:10px 18px}
 <main id="main"></main>
 <script>
 'use strict';
-const APP_VERSION = 'v1.2.0';
+const APP_VERSION = 'v1.3.0';
 const KEY = 'robotique-data-v1', UIKEY = 'robotique-ui-v1';
 
 /* ─────────────── Utilitaires ─────────────── */
@@ -210,8 +235,8 @@ const TASK_FIELDS = [['titre','Titre'],['niveau','Difficulté','stars'],['etapeI
 TYPES.defis.fields = TASK_FIELDS; TYPES.exercices.fields = TASK_FIELDS;
 TYPES.etapes.fields = [['titre','Titre'],['description','Objectif','textarea'],['connaissances','Connaissances visées','multi','connaissances']];
 TYPES.connaissances.fields = [['titre','Intitulé'],['domaine','Domaine / thème'],['description','Description','textarea']];
-TYPES.materiels.fields = [['titre','Nom'],['quantite','Quantité disponible','number'],['description','Remarques','textarea']];
-TYPES.tapis.fields = [['titre','Nom'],['dimensions','Dimensions'],['description','Description','textarea']];
+TYPES.materiels.fields = [['titre','Nom'],['quantite','Quantité disponible','number'],['description','Remarques','textarea'],['photos','Photos','photos']];
+TYPES.tapis.fields = [['titre','Nom'],['dimensions','Dimensions'],['description','Description','textarea'],['photos','Photos (prises au téléphone ou fichiers)','photos']];
 
 const ST = {
   afaire:   {l:'À faire', c:'#78716C'},
@@ -240,7 +265,7 @@ try { Object.assign(U, JSON.parse(localStorage.getItem(UIKEY)||'{}')); } catch(e
 const saveUI = () => { try{ localStorage.setItem(UIKEY, JSON.stringify(U)); }catch(e){} };
 
 const undoStack = [];
-function save(){ try { localStorage.setItem(KEY, JSON.stringify(D)); } catch(e){ toast('⚠ Enregistrement impossible : '+e.message); } liveTick(); }
+function save(){ D._mod = Date.now(); dbxSchedule(); try { localStorage.setItem(KEY, JSON.stringify(D)); } catch(e){ toast('⚠ Enregistrement impossible : '+e.message); } liveTick(); }
 function commit(fn, silent){
   undoStack.push(JSON.stringify(D)); if (undoStack.length>50) undoStack.shift();
   fn(); save(); if (!silent) render(); else renderHeader();
@@ -348,11 +373,24 @@ function field(fd, f){
   else if (kind==='number') inp = h('input',{type:'number',min:0,value:f[key]??'',oninput:e=>f[key]=e.target.value===''?'':+e.target.value});
   else if (kind==='stars'){ inp = h('div',{class:'stars'}); const draw=()=>inp.replaceChildren(...[1,2,3].map(n=>h('button',{type:'button',class:'star'+(n<=(f[key]||0)?' on':''),onclick:()=>{f[key]=f[key]===n?0:n;draw();}},'★'))); draw(); }
   else if (kind==='etape') inp = h('select',{value:f[key]||'',onchange:e=>f[key]=e.target.value}, h('option',{value:''},'—'), D.lib.etapes.map((s,i)=>h('option',{value:s.id},(i+1)+'. '+s.titre)));
+  else if (kind==='photos'){ f[key] = [...(f[key]||[])]; inp = h('div',{class:'photos'});
+    const draw = () => inp.replaceChildren(...f[key].map((src,i)=>h('span',{class:'phot'}, h('img',{src,onclick:()=>viewPhoto(src)}), h('button',{type:'button',class:'x del',title:'Retirer',onclick:()=>{f[key].splice(i,1);draw();}},'×'))),
+      h('label',{class:'addph'},'📷 Ajouter', h('input',{type:'file',accept:'image/*',multiple:true,style:{display:'none'},onchange:async e=>{ for (const file of e.target.files){ try { f[key].push(await shrinkImage(file)); } catch(_){ toast('Image illisible'); } } draw(); }})));
+    draw(); }
   else if (kind==='multi'){ f[key] = [...(f[key]||[])];
     inp = h('div',{class:'multi'}, D.lib[extra].length ? D.lib[extra].map(it => { const b = h('button',{type:'button',class:'pick'+(f[key].includes(it.id)?' on':''),onclick:()=>{ const i=f[key].indexOf(it.id); if(i<0) f[key].push(it.id); else f[key].splice(i,1); b.classList.toggle('on'); }}, TYPES[extra].icon+' '+it.titre); return b; }) : h('span',{class:'muted'},'Rien dans « '+TYPES[extra].label+' » pour l\'instant.')); }
   else inp = h('input',{type:'text',value:f[key]||'',oninput:e=>f[key]=e.target.value});
   return h('div',{class:'fld'}, h('span',null,label), inp);
 }
+async function shrinkImage(file, max=1000){
+  const url = URL.createObjectURL(file);
+  try { const img = await new Promise((ok,ko)=>{ const i = new Image(); i.onload=()=>ok(i); i.onerror=ko; i.src=url; });
+    const r = Math.min(1, max/Math.max(img.width, img.height)); const c = document.createElement('canvas');
+    c.width = Math.round(img.width*r); c.height = Math.round(img.height*r); c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    return c.toDataURL('image/jpeg', 0.72); } finally { URL.revokeObjectURL(url); }
+}
+function viewPhoto(src){ modal('Photo', h('img',{src,style:{width:'100%',borderRadius:'8px'}}), []); }
+const thumbs = arr => arr && arr.length ? h('div',{class:'thumbs'}, arr.map(src=>h('img',{src,onclick:e=>{e.stopPropagation();viewPhoto(src);}}))) : null;
 function editItem(type, item){
   const isNew = !item; const f = item ? JSON.parse(JSON.stringify(item)) : {id:uid()};
   const body = h('div',null, TYPES[type].fields.map(fd => field(fd,f)));
@@ -386,6 +424,7 @@ function renderHeader(){
     h('nav',null, VIEWS.map(([k,l]) => h('button',{class:U.view===k?'on':'',onclick:()=>{U.view=k;saveUI();render();}},l))),
     h('span',{class:'sp'}),
     D.classes.length && !['biblio','donnees'].includes(U.view) ? h('select',{value:c?c.id:'',title:'Classe',onchange:e=>{U.classeId=e.target.value;U.seanceId=null;saveUI();render();}}, D.classes.map(x=>h('option',{value:x.id},x.nom))) : null,
+    dbxBadge(),
     h('button',{title:'Annuler la dernière action (Ctrl+Z)',onclick:undo,disabled:!undoStack.length},'↶'),
     h('span',{class:'ver'},APP_VERSION)].filter(Boolean));
 }
@@ -397,6 +436,7 @@ function render(){
   if (U.mode==='projo') vProjo(m); else
   ({seance:vSeance, eleves:vEleves, historique:vHistorique, progression:vProgression, biblio:vBiblio, donnees:vDonnees}[U.view]||vSeance)(m);
   m.scrollLeft = sx; m.scrollTop = sy; const b = m.querySelector('.board'); if (b) b.scrollLeft = bx;
+  for (const l of m.querySelectorAll('.tl[data-cur]')){ const el = l.children[+l.dataset.cur]; if (el && +l.dataset.cur>0) l.scrollTop = el.offsetTop - 4; }
   saveUI();
 }
 function needClasse(m){
@@ -410,8 +450,11 @@ function needClasse(m){
 const newEq = s => ({id:uid(), nom:'Équipe '+(s.equipes.length+1), eleves:[], taches:[], materiels:[], tapis:[], obs:''});
 const newTask = (ref, titre) => ({id:uid(), ref, titre:titre||'', statut:'afaire', note:''});
 
+const curIdx = list => { const i = list.findIndex(t=>t.statut!=='reussi'); return i<0 ? list.length-1 : i; };
+const gridCols = (n, min) => `repeat(${n<=4 ? Math.max(n,1) : Math.ceil(n/2)}, minmax(${min}px,1fr))`;
 function vSeance(m){
   const c = curClasse(); if (!c) return needClasse(m);
+  const grid = U.layout!=='row';
   const ses = seancesOf(c.id).reverse();
   let s = byId(D.seances, U.seanceId); if (!s || s.classeId!==c.id) s = ses[0]; U.seanceId = s ? s.id : null;
   m.append(h('div',{class:'bar'},
@@ -422,6 +465,7 @@ function vSeance(m){
     h('span',{class:'sp'}),
     s && s.live && s.live.on ? liveBadge() : null,
     s && h('button',{onclick:()=>liveModal(s)},s.live&&s.live.on?'📡 Diffusion…':'📡 Diffuser aux équipes'),
+    s && h('button',{title:'Disposition des équipes',onclick:()=>{U.layout=grid?'row':'grid';render();}}, grid?'▤ Sur une ligne':'▦ En grille'),
     s && h('button',{onclick:()=>{U.mode='projo';render();}},'👁 Mode élève'),
     s && h('button',{class:'danger',onclick:()=>confirmBox('Supprimer la séance du '+fmtDate(s.date)+' ? (équipes, tâches et observations)',()=>commit(()=>{D.seances=D.seances.filter(x=>x!==s);U.seanceId=null;}))},'🗑 Séance')));
   if (!s){ m.append(h('div',{class:'empty card'}, h('h2',null,'Aucune séance pour '+c.nom), h('p',null,'Créez une séance pour former les équipes et distribuer les tâches.'), h('button',{class:'pri',onclick:()=>newSeance(c)},'+ Nouvelle séance'))); return; }
@@ -444,7 +488,8 @@ function vSeance(m){
     h('div',{class:'tabs'}, ['defis','exercices','materiels','tapis'].map(t => h('button',{class:pt===t?'on':'',onclick:()=>{U.palTab=t;render();}}, TYPES[t].icon+' '+TYPES[t].label))),
     palItems.length ? palItems.map(it => h('div',{class:'lib',dataset:{drag:JSON.stringify({k:'lib',t:pt,id:it.id})},onclick:()=>{ if(!dragJust) editItem(pt,it); }},
         TYPES[pt].icon+' '+it.titre, (it.niveau? ' '+'★'.repeat(it.niveau):''),
-        h('small',null, pt==='materiels' ? (it.quantite!==''&&it.quantite!=null ? 'Quantité : '+it.quantite : '') : pt==='tapis' ? (it.dimensions||'') : (it.etapeId ? 'Étape : '+libTitle('etapes',it.etapeId) : ''))))
+        h('small',null, pt==='materiels' ? (it.quantite!==''&&it.quantite!=null ? 'Quantité : '+it.quantite : '') : pt==='tapis' ? (it.dimensions||'') : (it.etapeId ? 'Étape : '+libTitle('etapes',it.etapeId) : '')),
+        pt==='tapis' && it.photos && it.photos[0] ? h('img',{src:it.photos[0],draggable:'false'}) : null))
       : h('div',{class:'hint'},'Aucun élément. Ajoutez-en dans la Bibliothèque.'),
     h('button',{class:'ghost',onclick:()=>editItem(pt,null)},'+ '+TYPES[pt].one),
     h('div',{class:'muted',style:{fontSize:'11px'}},'Glissez un élément vers une équipe. Déposez ici une tâche pour la retirer.'));
@@ -463,8 +508,9 @@ function vSeance(m){
     h('div',{class:'abs',dataset:{drop:'absents'}}, h('div',{class:'sub'},'Absents ('+abs.size+')'),
       h('div',{class:'zone'}, [...abs].map(id=>chipEl(eleve(id))))));
 
-  const board = h('div',{class:'board'}, pal, res, s.equipes.map(q => colEq(s,q,pm)),
-    h('button',{class:'addcol',onclick:()=>commit(()=>s.equipes.push(newEq(s)))},'+ Équipe'));
+  const board = h('div',{class:'board'+(grid?' gridmode':'')}, pal, res,
+    h('div',{class:'tg',style:grid?{gridTemplateColumns:gridCols(s.equipes.length,200)}:{}}, s.equipes.map(q => colEq(s,q,pm)),
+      grid && s.equipes.length ? null : h('button',{class:'addcol',onclick:()=>commit(()=>s.equipes.push(newEq(s)))},'+ Équipe')));
   m.append(board);
 }
 
@@ -494,11 +540,11 @@ function colEq(s, q, pm){
       h('button',{class:'x del',title:'Supprimer l\'équipe (élèves et tâches retournent en réserve)',onclick:()=>commit(()=>{ s.reserve.push(...q.taches); s.equipes = s.equipes.filter(x=>x!==q); })},'×')),
     h('div',{class:'zone'}, q.eleves.length ? q.eleves.map(id=>chipEl(eleve(id))) : h('div',{class:'hint'},'Glissez des élèves ici')),
     h('div',{class:'sub'},'Tâches'),
-    q.taches.length ? q.taches.map(t=>taskEl(t,s)) : h('div',{class:'hint'},'Glissez un défi ou un exercice'),
+    h('div',{class:'tl',dataset:{cur:String(curIdx(q.taches))}}, q.taches.length ? q.taches.map(t=>taskEl(t,s)) : h('div',{class:'hint'},'Glissez un défi ou un exercice')),
     mats.length ? h('div',null, h('div',{class:'sub'},'Matériel'), h('div',{class:'mats'}, mats.map(([t,id]) =>
       h('span',{class:'mat',dataset:{drag:JSON.stringify({k:'mat',t,id,from:q.id})}}, TYPES[t].icon+' '+libTitle(t,id),
         h('button',{title:'Retirer',onclick:e=>{e.stopPropagation();commit(()=>q[t]=q[t].filter(x=>x!==id));}},'×'))))) : null,
-    h('textarea',{class:'obs',rows:2,placeholder:'Observations…',value:q.obs||'',onchange:e=>commit(()=>q.obs=e.target.value,true)}));
+    h('textarea',{class:'obs',rows:1,placeholder:'Observations…',value:q.obs||'',onchange:e=>commit(()=>q.obs=e.target.value,true)}));
 }
 
 function findTask(s, id){
@@ -566,6 +612,8 @@ document.addEventListener('pointercancel', e => endDrag(e,true));
 function autoScroll(e){
   const b = document.querySelector('.board'); if (!b) return; const r = b.getBoundingClientRect();
   if (e.clientX > r.right-50) b.scrollLeft += 14; else if (e.clientX < r.left+260 && e.clientX > r.left) b.scrollLeft -= 14;
+  const mm = document.getElementById('main'), mr = mm.getBoundingClientRect();
+  if (e.clientY > mr.bottom-40) mm.scrollTop += 14; else if (e.clientY < mr.top+30) mm.scrollTop -= 14;
 }
 document.addEventListener('keydown', e => {
   if (e.key==='Escape'){ const ov = [...document.querySelectorAll('.ov')].pop(); if (ov) ov.remove(); }
@@ -775,7 +823,7 @@ function vProgression(m){
 function vBiblio(m){
   const t = U.libType in TYPES ? U.libType : 'defis'; const items = D.lib[t];
   m.append(h('div',{class:'bar'}, h('div',{class:'tabs'}, Object.entries(TYPES).map(([k,v])=>h('button',{class:t===k?'on':'',onclick:()=>{U.libType=k;render();}},v.icon+' '+v.label+' ('+D.lib[k].length+')'))),
-    h('span',{class:'sp'}), h('button',{class:'pri',onclick:()=>editItem(t,null)},'+ '+TYPES[t].one)));
+    h('span',{class:'sp'}), h('button',{onclick:addMbotPack},'📦 Base mBot2 / mBlock'), h('button',{class:'pri',onclick:()=>editItem(t,null)},'+ '+TYPES[t].one)));
   if (!items.length){ m.append(h('div',{class:'empty card'}, h('p',null,'Aucun élément dans « '+TYPES[t].label+' ».'), h('button',{class:'pri',onclick:()=>editItem(t,null)},'+ Ajouter'))); return; }
   // usage des défis / exercices
   const use = {}; for (const s of D.seances) for (const q of s.equipes) for (const x of q.taches) if (x.ref){ const u = use[x.ref.id] = use[x.ref.id]||{n:0,ok:0}; u.n++; if (x.statut==='reussi') u.ok++; }
@@ -787,6 +835,7 @@ function vBiblio(m){
     it.domaine ? h('div',{class:'muted'},it.domaine) : null,
     it.quantite!==undefined && it.quantite!=='' ? h('div',null,'Quantité : '+it.quantite) : null,
     it.dimensions ? h('div',null,it.dimensions) : null,
+    thumbs(it.photos),
     it.description ? h('p',null,it.description) : null,
     it.etapeId ? h('span',{class:'tag'},'📈 '+libTitle('etapes',it.etapeId)) : null,
     ['materiels','tapis','connaissances'].map(k=>(it[k]||[]).map(id=>h('span',{class:'tag'},TYPES[k].icon+' '+libTitle(k,id)))),
@@ -824,6 +873,14 @@ function vDonnees(m){
         h('button',{class:'pri',onclick:()=>download('robotique-sauvegarde-'+today()+'.json', JSON.stringify(D,null,1))},'⬇ Exporter la sauvegarde'),
         h('span',{class:'row',style:{margin:0}}, h('button',{onclick:e=>e.currentTarget.nextSibling.click()},'⬆ Restaurer une sauvegarde…'),
           h('input',{type:'file',accept:'.json',style:{display:'none'},onchange:e=>readFile(e.target.files[0], restore)})))),
+    h('div',{class:'sec card'}, h('h2',null,'Base de connaissances prête à l\'emploi'),
+      h('p',{class:'muted'},'mBlock 5 + mBot2, de la 6e à la 3e : connaissances, progression en 9 étapes du débutant au projet autonome, exercices et défis avec consignes et coups de pouce, matériel et tapis. Tout reste modifiable.'),
+      h('button',{class:'pri',onclick:addMbotPack},'📦 Ajouter la base mBot2 / mBlock')),
+    dbxCard(),
+    h('div',{class:'sec card'}, h('h2',null,'Écran d\'accueil'),
+      h('p',{class:'muted'}, localStorage.getItem(ROLE_KEY)==='prof' ? 'Cet ordinateur ouvre directement le mode prof.' : 'À l\'ouverture, l\'appli propose « Mode prof » ou « Mode élève ».'),
+      h('div',{class:'row'}, localStorage.getItem(ROLE_KEY) ? h('button',{onclick:()=>{ localStorage.removeItem(ROLE_KEY); render(); }},'Toujours proposer le choix') : h('button',{onclick:()=>{ localStorage.setItem(ROLE_KEY,'prof'); render(); }},'Ouvrir directement en mode prof sur cet ordinateur'),
+        h('button',{onclick:()=>{ history.replaceState(null,'',location.pathname); splash(); }},'Voir l\'écran d\'accueil'))),
     h('div',{class:'sec card'}, h('h2',null,'Exemple et remise à zéro'),
       h('div',{class:'row'}, h('button',{onclick:loadExample},'Ajouter les données d\'exemple'),
         h('button',{onclick:()=>confirmBox('Ajouter la bibliothèque de départ (matériel, tapis, défis, progression) sans élèves ?',()=>commit(()=>mergeLib(exampleData().lib)),'Ajouter')},'Ajouter seulement la bibliothèque d\'exemple'),
@@ -921,7 +978,7 @@ function askPin(fn){
 function taskView(t){
   const it = refItem(t);
   return {titre:taskTitle(t), icon: it ? TYPES[t.ref.t].icon : '✏️', niveau: it ? it.niveau||0 : 0, desc: it ? it.description||'' : (t.note||''),
-    aides: aidesOf(it), mats: it ? [...(it.materiels||[]).map(id=>libTitle('materiels',id)), ...(it.tapis||[]).map(id=>libTitle('tapis',id))] : [], statut:t.statut, hints:t.hints||0};
+    photos: it ? (it.tapis||[]).flatMap(id=>(byId(D.lib.tapis,id)||{}).photos||[]) : [], aides: aidesOf(it), mats: it ? [...(it.materiels||[]).map(id=>libTitle('materiels',id)), ...(it.tapis||[]).map(id=>libTitle('tapis',id))] : [], statut:t.statut, hints:t.hints||0};
 }
 function taskDetail(v, H){
   let shown = Math.min(v.hints||0, v.aides.length);
@@ -934,6 +991,7 @@ function taskDetail(v, H){
     h('div',{class:'row'}, h('span',{class:'stbtn',style:{background:(ST[st]||ST.afaire).c}}, STU[st]||st), v.niveau ? h('span',{style:{color:'#D97706'}},'★'.repeat(v.niveau)) : null, H.team ? h('span',{class:'muted'},H.team) : null),
     v.desc ? h('p',{class:'consigne'}, v.desc) : h('p',{class:'muted'},'Pas de consigne écrite : demandez à vos coachs.'),
     v.mats.length ? [h('div',{class:'sub'},'Matériel'), h('div',null, v.mats.map(x=>h('span',{class:'tag'},x)))] : null,
+    v.photos && v.photos.length ? thumbs(v.photos) : null,
     v.aides.length ? [h('div',{class:'sub'},'Coups de pouce'), box] : null,
     st==='avalider' ? h('div',{class:'bravo'},'🎉 Bravo ! Montrez votre réussite à vos coachs pour qu\'ils la valident.') : null,
     st==='reussi' ? h('div',{class:'bravo ok'},'✅ Validé par les coachs. Passez à la suite !') : null,
@@ -946,17 +1004,17 @@ function taskDetail(v, H){
 }
 function vProjo(m){
   const s = byId(D.seances, U.seanceId); if (!s){ U.mode=''; return render(); }
-  m.append(h('div',{class:'board projo'}, s.equipes.map(q => h('div',{class:'col'},
+  m.append(h('div',{class:'projo',style:{gridTemplateColumns:gridCols(s.equipes.length,220)}}, s.equipes.map(q => h('div',{class:'col'},
     h('div',{class:'colh'}, h('b',{style:{fontSize:'18px'}},q.nom)),
     h('div',{class:'zone'}, q.eleves.map(id=>{ const e=eleve(id); return e ? h('span',{class:'chip',style:{cursor:'default'}}, h('span',{class:'av',style:{background:`hsl(${hue(e.id)} 45% 45%)`}},initials(e)), short(e)) : null; })),
-    q.taches.map((t,i) => { const st = ST[t.statut]||ST.afaire;
+    h('div',{class:'tl',dataset:{cur:String(curIdx(q.taches))}}, q.taches.map((t,i) => { const st = ST[t.statut]||ST.afaire;
       return h('div',{class:'task'+(t.statut==='avalider'?' alert':''),style:{borderLeftColor:st.c},onclick:()=>taskDetail(taskView(t), {team:q.nom,
           hint:n=>commit(()=>t.hints=Math.max(t.hints||0,n),true),
           done:()=>commit(()=>{ if(t.statut!=='reussi') t.statut='avalider'; }),
           validate:()=>askPin(()=>commit(()=>t.statut='reussi')),
           reprendre:()=>askPin(()=>commit(()=>t.statut='reprendre'))})},
         h('div',{class:'tt'}, (i+1)+'. '+taskView(t).icon+' '+taskTitle(t), t.hints ? h('span',{class:'hb'},' 💡'+t.hints) : null),
-        h('span',{class:'stbtn',style:{background:st.c}}, STU[t.statut]||st.l)); }),
+        h('span',{class:'stbtn',style:{background:st.c}}, STU[t.statut]||st.l)); })),
     !q.taches.length ? h('div',{class:'hint'},'Pas encore de tâche') : null))));
 }
 
@@ -1027,7 +1085,7 @@ function liveModal(s){
       h('p',null,'Chaque équipe ouvre l\'appli sur sa machine, tape le code de la séance et choisit son équipe. Elle voit son chemin de tâches dans l\'ordre, les consignes et les coups de pouce, et signale « J\'ai réussi ! ». La demande arrive ici et sur l\'écran projeté (👁 Mode élève) ; un coach valide.'),
       h('p',{class:'muted',style:{fontSize:'12px'}},'Les échanges passent par le relais gratuit ntfy.sh (sans compte). Seuls transitent les noms d\'équipes, les tâches, leurs consignes et leurs statuts : aucun nom d\'élève. Votre ordinateur doit rester ouvert sur cette séance pendant l\'activité.'),
       pinF),
-      [{l:'Annuler'},{l:'Activer la diffusion',cls:'pri',fn:()=>{ commit(()=>{ D.coachPin = pin; for (const x of D.seances) if (x.live) x.live.on = false; s.live = {on:true, code:genCode(), seen:[]}; }); setTimeout(()=>liveModal(s),50); }}]);
+      [{l:'Annuler'},{l:'Activer la diffusion',cls:'pri',fn:()=>{ commit(()=>{ D.coachPin = pin; for (const x of D.seances) if (x.live) x.live.on = false; const c = byId(D.classes, s.classeId); const code = (c && c.liveCode) || genCode(); if (c) c.liveCode = code; s.live = {on:true, code, seen:[]}; }); setTimeout(()=>liveModal(s),50); }}]);
     return;
   }
   const url = joinUrl(s.live.code);
@@ -1036,15 +1094,121 @@ function liveModal(s){
     h('p',{style:{textAlign:'center',fontWeight:600,wordBreak:'break-all'}}, joinUrl(null)),
     h('p',{style:{textAlign:'center',margin:0}},'puis le code :'), h('div',{class:'codebig'}, s.live.code),
     h('div',{class:'row',style:{justifyContent:'center'}}, h('button',{onclick:()=>{ navigator.clipboard && navigator.clipboard.writeText(url).then(()=>toast('Lien copié')); }},'📋 Copier le lien direct'), liveBadge()),
-    h('p',{class:'muted',style:{fontSize:'12px',textAlign:'center'}},'Lien direct (code inclus) : '+url),
+    h('p',{class:'muted',style:{fontSize:'12px',textAlign:'center'}},'Lien direct (code inclus) : '+url+'. Le code reste le même pour ce groupe d\'une séance à l\'autre : les postes élèves le retiennent.'),
     pinF),
     [{l:'⏹ Arrêter la diffusion',cls:'danger l',fn:()=>{ savePin(); commit(()=>s.live.on=false); }},
+     {l:'🔄 Nouveau code',fn:()=>{ savePin(); commit(()=>{ const c = byId(D.classes, s.classeId); s.live.code = genCode(); s.live.seen = []; if (c) c.liveCode = s.live.code; }); setTimeout(()=>liveModal(s),50); }},
      {l:'👁 Écran de projection',fn:()=>{ savePin(); U.mode='projo'; U.seanceId=s.id; render(); }},
      {l:'OK',cls:'pri',fn:savePin}]);
 }
 
+/* ─────────────── Synchronisation Dropbox (version prof) ─────────────── */
+const DBX = {key:'kelrt6zi21z7zcz', path:'/robotique.json', auth:'https://www.dropbox.com/oauth2/authorize', token:'https://api.dropboxapi.com/oauth2/token', content:'https://content.dropboxapi.com/2', t:null, busy:false, state:'', err:''};
+const DKEY = 'robotique-dbx';
+let DB = {}; try { DB = JSON.parse(localStorage.getItem(DKEY)||'{}'); } catch(_){}
+const dbSave = () => { try { localStorage.setItem(DKEY, JSON.stringify(DB)); } catch(_){} };
+const dbxKey = () => DB.key || DBX.key;
+const redirectUri = () => location.origin + location.pathname;
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const hasData = () => D.classes.length || D.eleves.length || D.seances.length || Object.values(D.lib).some(a=>a.length);
+async function dbxConnect(){
+  const v = b64url(crypto.getRandomValues(new Uint8Array(48))); sessionStorage.setItem('robotique-dbx-v', v);
+  const ch = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v)));
+  location.href = DBX.auth+'?client_id='+encodeURIComponent(dbxKey())+'&response_type=code&redirect_uri='+encodeURIComponent(redirectUri())+'&code_challenge='+ch+'&code_challenge_method=S256&token_access_type=offline';
+}
+async function dbxHandleRedirect(){
+  const q = new URLSearchParams(location.search); const code = q.get('code'), v = sessionStorage.getItem('robotique-dbx-v');
+  if (!code && !q.get('error')) return false;
+  history.replaceState(null,'',location.pathname+location.hash);
+  if (!code || !v) { toast('Connexion Dropbox annulée'); return true; }
+  try { const r = await fetch(DBX.token, {method:'POST', body:new URLSearchParams({code, grant_type:'authorization_code', client_id:dbxKey(), redirect_uri:redirectUri(), code_verifier:v})});
+    const j = await r.json(); if (!r.ok) throw new Error(j.error_description || ('HTTP '+r.status));
+    DB = {key:DB.key, refresh:j.refresh_token, access:j.access_token, exp:Date.now()+((j.expires_in||14400)-60)*1000}; dbSave(); sessionStorage.removeItem('robotique-dbx-v');
+    toast('Dropbox connecté'); } catch(e){ DBX.state='err'; DBX.err = e.message; toast('Échec de la connexion Dropbox : '+e.message); }
+  return true;
+}
+async function dbxToken(){
+  if (DB.access && Date.now() < DB.exp) return DB.access;
+  const r = await fetch(DBX.token, {method:'POST', body:new URLSearchParams({grant_type:'refresh_token', refresh_token:DB.refresh, client_id:dbxKey()})});
+  const j = await r.json(); if (!r.ok) throw new Error('autorisation expirée : reconnectez Dropbox');
+  DB.access = j.access_token; DB.exp = Date.now()+((j.expires_in||14400)-60)*1000; dbSave(); return DB.access;
+}
+async function dbxDownload(){
+  const r = await fetch(DBX.content+'/files/download', {method:'POST', headers:{Authorization:'Bearer '+await dbxToken(), 'Dropbox-API-Arg':JSON.stringify({path:DBX.path})}});
+  if (r.status===409) return null; if (!r.ok) throw new Error('lecture HTTP '+r.status);
+  return {meta:JSON.parse(r.headers.get('Dropbox-API-Result')||'{}'), data:JSON.parse(await r.text())};
+}
+async function dbxUpload(){
+  const mode = DB.rev ? {'.tag':'update', update:DB.rev} : {'.tag':'overwrite'};
+  const r = await fetch(DBX.content+'/files/upload', {method:'POST', headers:{Authorization:'Bearer '+await dbxToken(), 'Content-Type':'application/octet-stream',
+    'Dropbox-API-Arg':JSON.stringify({path:DBX.path, mode, autorename:false, mute:true})}, body:JSON.stringify(D)});
+  if (r.status===409) return 'conflict'; if (!r.ok) throw new Error('envoi HTTP '+r.status);
+  const j = await r.json(); DB.rev = j.rev; DB.syncedMod = D._mod||0; DB.last = Date.now(); dbSave(); return 'ok';
+}
+function dbxAdopt(rem){
+  D = normalize(rem.data); DB.rev = rem.meta.rev; DB.syncedMod = D._mod||0; DB.last = Date.now(); dbSave();
+  try { localStorage.setItem(KEY, JSON.stringify(D)); } catch(_){} liveTick(); render();
+}
+async function dbxSync(){
+  if (!DB.refresh || DBX.busy) return; DBX.busy = true; DBX.state = 'sync'; refreshDbx();
+  try {
+    const rem = await dbxDownload();
+    const localChanged = (D._mod||0) > (DB.syncedMod||0);
+    if (!rem){ await dbxUpload(); }
+    else if (rem.meta.rev === DB.rev){ if (localChanged && await dbxUpload()==='conflict'){ DB.rev = null; DBX.busy = false; return dbxSync(); } }
+    else if (!hasData() || (DB.rev && !localChanged)) dbxAdopt(rem);
+    else { DBX.busy = false; DBX.state = ''; refreshDbx(); return dbxChoose(rem); }
+    DBX.state = 'ok'; DBX.err = '';
+  } catch(e){ DBX.state = 'err'; DBX.err = e.message; }
+  DBX.busy = false; refreshDbx();
+}
+function dbxChoose(rem){
+  const when = rem.meta.server_modified ? new Date(rem.meta.server_modified).toLocaleString('fr-FR') : '?';
+  modal('Deux versions différentes', h('div',null,
+    h('p',null,'Les données de Dropbox (enregistrées le '+when+') et celles de cet ordinateur ont été modifiées séparément. Laquelle garder ?'),
+    h('p',{class:'muted',style:{fontSize:'12px'}},'Conseil : exportez d\'abord une sauvegarde (onglet Données) si vous avez un doute.')),
+    [{l:'Garder cet ordinateur',fn:()=>{ DB.rev = rem.meta.rev; dbSave(); D._mod = Date.now(); dbxSync(); }},
+     {l:'Garder Dropbox',cls:'pri',fn:()=>{ undoStack.push(JSON.stringify(D)); dbxAdopt(rem); DBX.state='ok'; refreshDbx(); }}]);
+}
+function dbxSchedule(){ if (!DB.refresh) return; clearTimeout(DBX.t); DBX.t = setTimeout(dbxSync, 2500); }
+function dbxBadge(){
+  if (!DB.refresh) return null;
+  const st = DBX.state==='err' ? ['⚠ Dropbox','#B91C1C'] : DBX.state==='sync' ? ['☁ …','#6B675C'] : ['☁ ✓','#16A34A'];
+  return h('span',{class:'dbx',id:'dbxbadge',style:{color:st[1]},title:DBX.state==='err' ? 'Dropbox : '+DBX.err : 'Synchronisé avec Dropbox'+(DB.last?' ('+new Date(DB.last).toLocaleTimeString('fr-FR')+')':''),onclick:()=>{ U.view='donnees'; U.mode=''; render(); }}, st[0]);
+}
+function refreshDbx(){ const b = document.getElementById('dbxbadge'); const n = dbxBadge(); if (b && n) b.replaceWith(n); else if (!b) renderHeader(); }
+function dbxCard(){
+  let key = DB.key || '';
+  return h('div',{class:'sec card'}, h('h2',null,'☁ Synchronisation Dropbox (version prof)'),
+    DB.refresh ? [
+      h('p',null, DBX.state==='err' ? '⚠ '+DBX.err : 'Connecté. Les données sont enregistrées dans le fichier robotique.json du dossier de l\'application, à côté de celui de PlanClasse. Dernière synchronisation : '+(DB.last ? new Date(DB.last).toLocaleString('fr-FR') : '—')+'.'),
+      h('div',{class:'row'}, h('button',{class:'pri',onclick:()=>dbxSync()},'🔄 Synchroniser maintenant'),
+        h('button',{class:'danger',onclick:()=>confirmBox('Déconnecter Dropbox sur cet ordinateur ? Les données restent sur l\'ordinateur et dans Dropbox.',()=>{ DB = {key:DB.key}; dbSave(); render(); },'Déconnecter')},'Déconnecter'))]
+    : [h('p',{class:'muted'},'Retrouvez vos classes, séances et bibliothèque sur tous vos ordinateurs. Utilise la même application Dropbox que PlanClasse.'),
+      h('p',{class:'muted',style:{fontSize:'12px'}},'Première fois seulement : dans la console Dropbox (dropbox.com/developers/apps) de l\'application de PlanClasse, onglet Settings, ajoutez à « OAuth 2 Redirect URIs » l\'adresse exacte : '+redirectUri()),
+      h('div',{class:'row'}, h('button',{class:'pri',onclick:dbxConnect},'Se connecter à Dropbox'),
+        h('details',null, h('summary',{class:'muted',style:{fontSize:'12px',cursor:'pointer'}},'Clé d\'application'),
+          h('div',{class:'row'}, h('input',{type:'text',size:18,placeholder:DBX.key,value:key,oninput:e=>key=e.target.value.trim()}), h('button',{onclick:()=>{ DB.key = key || undefined; dbSave(); toast('Clé enregistrée'); }},'OK'))))]);
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && !document.body.classList.contains('stu')) dbxSync(); });
+
+/* ─────────────── Écran d'accueil ─────────────── */
+const ROLE_KEY = 'robotique-role';
+function splash(){
+  let remember = false;
+  document.getElementById('hd').replaceChildren(h('h1',null,'🤖 Robotique'), h('span',{class:'sp',style:{flex:1}}), h('span',{class:'ver'},APP_VERSION));
+  document.getElementById('main').replaceChildren(h('div',{class:'splash'},
+    h('h2',null,'Atelier robotique'), h('p',{class:'muted'},'Qui utilise cet ordinateur ?'),
+    h('div',{class:'choices'},
+      h('button',{onclick:()=>{ if (remember) localStorage.setItem(ROLE_KEY,'prof'); startProf(); }}, h('span',{class:'ic'},'👩‍🏫'), h('b',null,'Mode prof'), h('span',{class:'d'},'Préparer les séances, former les équipes, suivre la progression.')),
+      h('button',{onclick:()=>{ if (remember) localStorage.setItem(ROLE_KEY,'eleve'); history.replaceState(null,'',location.pathname+'#eleve'); studentApp(); }}, h('span',{class:'ic'},'🎒'), h('b',null,'Mode élève'), h('span',{class:'d'},'Voir le chemin de mon équipe, les consignes et les coups de pouce.'))),
+    h('label',{class:'row',style:{justifyContent:'center'}}, h('input',{type:'checkbox',onchange:e=>remember=e.target.checked}), 'Toujours ouvrir ce mode sur cet ordinateur')));
+}
+function startProf(){ document.body.classList.remove('stu'); if (U.mode==='projo' && !byId(D.seances,U.seanceId)) U.mode=''; render(); liveTick(); dbxSync(); }
+
 /* ─────────────── Page équipe (machine des élèves) ─────────────── */
 function studentApp(){
+  document.body.classList.add('stu');
   const SKEY = 'robotique-eleve';
   let P = {code:'', team:null, loc:{done:{}, h:{}}};
   try { Object.assign(P, JSON.parse(localStorage.getItem(SKEY)||'{}')); } catch(_){}
@@ -1073,7 +1237,7 @@ function studentApp(){
       P.code ? h('span',{class:'livebadge'}, h('span',{class:'dot'+(S.ok?' ok':'')}), S.ok ? 'Connecté' : 'Connexion…') : null,
       q ? h('button',{onclick:()=>{ P.team=null; keep(); draw(); }},'Changer d\'équipe') : null,
       P.code ? h('button',{onclick:()=>{ P = {code:'',team:null,loc:{done:{},h:{}}}; keep(); if (S.es) S.es.close(); history.replaceState(null,'',location.pathname+'#eleve'); draw(); }},'Changer de code') : null,
-      h('a',{href:location.pathname,class:'ver',style:{marginLeft:'8px'},onclick:e=>{ e.preventDefault(); history.replaceState(null,'',location.pathname); location.reload(); }},'espace prof'));
+      h('a',{href:location.pathname,class:'ver',style:{marginLeft:'8px'},onclick:e=>{ e.preventDefault(); localStorage.removeItem(ROLE_KEY); history.replaceState(null,'',location.pathname); location.reload(); }},'accueil'));
     m.replaceChildren();
     if (!P.code){ let v = '';
       const go = () => { v = v.trim().toUpperCase().replace(/[^A-Z0-9]/g,''); if (v.length<4) return toast('Code incomplet'); P.code = v; keep(); connect(); draw(); };
@@ -1147,13 +1311,135 @@ function exampleData(){
       {id:I('d5'),titre:'Livraison en ville',niveau:3,etapeId:I('e5'),description:'Livrer trois maisons dans l\'ordre, en s\'arrêtant à chaque feu rouge.',materiels:[I('m1')],tapis:[I('t3')],connaissances:[I('c3'),I('c4')]}]};
   return {lib, id};
 }
-function mergeLib(lib){ for (const k of Object.keys(lib)) for (const it of lib[k]) if (!D.lib[k].some(x=>norm(x.titre)===norm(it.titre))) D.lib[k].push(it); }
+function mergeLib(lib){
+  const map = {}, added = [];
+  for (const k of Object.keys(lib)) for (const it of lib[k]){ const f = D.lib[k].find(x=>norm(x.titre)===norm(it.titre)); if (f) map[it.id] = f.id; else { D.lib[k].push(it); added.push(it); } }
+  const r = x => map[x] || x;
+  for (const it of added){ for (const k of ['materiels','tapis','connaissances']) if (Array.isArray(it[k])) it[k] = it[k].map(r); if (it.etapeId) it.etapeId = r(it.etapeId); }
+  return {map, added:added.length};
+}
+function addMbotPack(){
+  confirmBox('Ajouter la base mBot2 / mBlock : 24 connaissances, 9 étapes de progression (du débutant au projet autonome), 10 exercices et 15 défis avec consignes et coups de pouce, le matériel et les tapis ? Les éléments de même titre déjà présents sont conservés.',
+    ()=>{ let n=0; commit(()=>{ n = mergeLib(mbotPack().lib).added; }); toast(n+' élément(s) ajouté(s)'); U.view='biblio'; U.libType='etapes'; render(); }, 'Ajouter');
+}
+/* ─────────────── Base prête à l'emploi : mBlock 5 + mBot2 (6e → 3e) ─────────────── */
+function mbotPack(){
+  const id = {}; const I = k => id[k] = id[k] || uid();
+  const C = (...k) => k.map(I);
+  const conn = (k, titre, domaine, description) => ({id:I(k), titre, domaine, description});
+  const task = (k, titre, niveau, e, description, aides, materiels, tapis, connaissances) =>
+    ({id:I(k), titre, niveau, etapeId:I(e), description, aides:aides.join('\n'), materiels:C(...materiels), tapis:C(...tapis), connaissances:C(...connaissances)});
+  const lib = {
+    materiels: [
+      {id:I('m_mbot'),titre:'mBot2',quantite:'',description:'Robot complet : carte CyberPi, 2 moteurs à encodeur, capteur à ultrasons 2, capteur quad RVB, batterie.'},
+      {id:I('m_usb'),titre:'Câble USB-C',quantite:'',description:'Relie le CyberPi à l\'ordinateur (mode Live et téléversement).'},
+      {id:I('m_pc'),titre:'Ordinateur avec mBlock 5',quantite:'',description:'Application mBlock 5 ou mblock.cc en ligne, avec l\'extension mBot2.'},
+      {id:I('m_obst'),titre:'Obstacles (boîtes, cubes)',quantite:'',description:'Pour les défis à ultrasons. Prendre des objets assez grands et plats face au capteur.'},
+      {id:I('m_regle'),titre:'Mètre ruban ou règle',quantite:'',description:'Mesurer les distances parcourues pour étalonner le robot.'},
+      {id:I('m_scotch'),titre:'Ruban adhésif noir et feutres',quantite:'',description:'Tracer ou réparer une piste, marquer départ et arrivée.'},
+      {id:I('m_chrono'),titre:'Chronomètre',quantite:'',description:'Mesurer les temps de parcours.'}],
+    tapis: [
+      {id:I('t_libre'),titre:'Zone libre (sol ou table)',dimensions:'1 m × 1 m minimum',description:'Surface plane et dégagée, avec un départ marqué.'},
+      {id:I('t_quad'),titre:'Quadrillage',dimensions:'cases de 20 cm',description:'Pour programmer des déplacements précis et des figures.'},
+      {id:I('t_ligne'),titre:'Piste de suivi de ligne (boucle)',dimensions:'',description:'Ligne noire épaisse sur fond blanc, virages doux.'},
+      {id:I('t_croix'),titre:'Piste avec croisements',dimensions:'',description:'Ligne noire avec intersections en T et en croix.'},
+      {id:I('t_coul'),titre:'Tapis à zones de couleur',dimensions:'',description:'Pastilles ou zones rouges, vertes, bleues, jaunes sur le trajet.'},
+      {id:I('t_sumo'),titre:'Arène sumo',dimensions:'cercle d\'environ 1 m',description:'Disque clair entouré d\'un bord foncé (ou l\'inverse) que le robot ne doit pas franchir.'},
+      {id:I('t_laby'),titre:'Labyrinthe',dimensions:'',description:'Couloirs délimités par des murs (cartons, planches) d\'au moins 10 cm de haut.'}],
+    connaissances: [
+      conn('c_mblock','Interface de mBlock 5','Prise en main','Zone des blocs, zone de script, zone Appareils. Ajouter l\'appareil CyberPi et l\'extension mBot2, puis connecter en USB.'),
+      conn('c_modes','Mode Live et mode Téléverser','Prise en main','Live : le programme tourne depuis l\'ordinateur, le robot reste connecté. Téléverser : le programme est copié dans le CyberPi et fonctionne seul, sans câble.'),
+      conn('c_algo','Algorithme, pseudo-code et organigramme','Algorithmique','Décrire la suite d\'actions avant de programmer : en phrases simples, en pseudo-code ou en organigramme.'),
+      conn('c_seq','Séquence d\'instructions','Algorithmique','Les instructions s\'exécutent l\'une après l\'autre, dans l\'ordre du script.'),
+      conn('c_boucle','Boucles : répéter n fois, répéter indéfiniment','Algorithmique','Faire répéter un groupe d\'instructions pour raccourcir le programme.'),
+      conn('c_jusqua','Boucle conditionnelle : répéter jusqu\'à','Algorithmique','Répéter tant qu\'une condition n\'est pas vraie, par exemple « jusqu\'à ce que la distance soit inférieure à 10 cm ».'),
+      conn('c_si','Conditions : si… alors… sinon','Algorithmique','Choisir une action selon une condition vraie ou fausse.'),
+      conn('c_ops','Comparaisons et opérateurs logiques','Algorithmique','Comparer (<, >, =) et combiner des conditions avec « et », « ou », « non ».'),
+      conn('c_event','Événements','Programmation','Démarrer un script quand le CyberPi démarre, quand on appuie sur le bouton A ou B, quand on pousse le joystick…'),
+      conn('c_var','Variables','Programmation','Une variable mémorise une valeur qui peut changer : compteur, vitesse, score. On peut la créer, la modifier et l\'afficher.'),
+      conn('c_bloc','Sous-programmes : « Mes blocs »','Programmation','Créer son propre bloc, avec ou sans paramètre, pour réutiliser une suite d\'instructions (ex. : carré(côté)).'),
+      conn('c_msg','Messages et programmes en parallèle','Programmation','Diffuser un message pour lancer un autre script ; plusieurs scripts peuvent tourner en même temps.'),
+      conn('c_listes','Listes','Programmation','Mémoriser une suite de valeurs (mesures, parcours) et la relire dans l\'ordre.'),
+      conn('c_etats','Machine à états','Programmation','Organiser un programme en modes (chercher, attaquer, fuir…) avec une variable « mode » et des conditions de passage.'),
+      conn('c_debug','Tester et déboguer','Méthode','Prévoir le résultat, tester, observer l\'écart, afficher les valeurs des capteurs, modifier une seule chose à la fois.'),
+      conn('c_chaine','Chaîne d\'information et chaîne d\'énergie','Systèmes','Information : acquérir (capteurs), traiter (CyberPi), communiquer (écran, LED, son). Énergie : alimenter (batterie), distribuer, convertir (moteurs), transmettre (roues).'),
+      conn('c_capt','Capteurs et actionneurs','Systèmes','Un capteur mesure une grandeur physique ; un actionneur agit (moteur, LED, haut-parleur).'),
+      conn('c_moteur','Moteurs à encodeur','mBot2','On règle la puissance (en %) ou la vitesse ; l\'encodeur mesure la rotation, ce qui permet des déplacements et des virages précis.'),
+      conn('c_ultra','Capteur à ultrasons','mBot2','Mesure la distance à un obstacle (en cm) grâce à l\'écho d\'un son inaudible.'),
+      conn('c_quad','Capteur quad RVB','mBot2','Quatre capteurs sous le robot : détecter une ligne noire ou blanche et reconnaître une couleur.'),
+      conn('c_prop','Suivi de ligne proportionnel','mBot2','Le capteur donne un écart (déviation) par rapport au centre de la ligne ; on corrige la vitesse des roues en proportion de cet écart.'),
+      conn('c_gyro','Gyroscope et accéléromètre du CyberPi','mBot2','Mesurer un angle de rotation ou une inclinaison, par exemple pour tourner d\'un angle précis.'),
+      conn('c_sortie','Écran, LED et haut-parleur du CyberPi','mBot2','Afficher du texte ou une valeur, allumer les LED en couleur, jouer des notes ou des sons.'),
+      conn('c_iot','Wi-Fi, objets connectés et reconnaissance vocale','Avancé','Avec le Wi-Fi, le CyberPi peut utiliser des services en ligne (reconnaissance vocale, météo) et échanger des données.')],
+    etapes: [
+      {id:I('e1'),titre:'Découvrir mBot2 et mBlock',description:'Connecter le robot, comprendre les modes Live et Téléverser, repérer capteurs et actionneurs.',connaissances:C('c_mblock','c_modes','c_capt','c_chaine')},
+      {id:I('e2'),titre:'Programmer une séquence',description:'Enchaîner déplacements, sons, lumières et affichages dans le bon ordre.',connaissances:C('c_seq','c_algo','c_moteur','c_sortie')},
+      {id:I('e3'),titre:'Répéter avec des boucles',description:'Raccourcir un programme qui se répète ; tracer des figures.',connaissances:C('c_boucle')},
+      {id:I('e4'),titre:'Réagir à un capteur',description:'Lire un capteur et décider avec si… alors… sinon.',connaissances:C('c_si','c_ops','c_ultra','c_jusqua')},
+      {id:I('e5'),titre:'Utiliser les événements',description:'Démarrer ou changer de comportement avec les boutons et le joystick.',connaissances:C('c_event')},
+      {id:I('e6'),titre:'Mesurer et mémoriser avec des variables',description:'Compter, chronométrer, étalonner, afficher des valeurs.',connaissances:C('c_var','c_debug')},
+      {id:I('e7'),titre:'Suivre une ligne',description:'Du suivi simple (si… sinon) au suivi fluide proportionnel.',connaissances:C('c_quad','c_prop')},
+      {id:I('e8'),titre:'Structurer avec sous-programmes et messages',description:'Créer ses blocs, découper le problème, faire tourner des scripts en parallèle.',connaissances:C('c_bloc','c_msg','c_gyro')},
+      {id:I('e9'),titre:'Projet autonome',description:'Résoudre un défi complexe : machine à états, listes, stratégie.',connaissances:C('c_etats','c_listes','c_iot')}],
+    exercices: [
+      task('x_conn','Connecter mBot2 à mBlock',1,'e1','Ajouter l\'appareil CyberPi et l\'extension mBot2, connecter le robot en USB, puis afficher « Bonjour » sur l\'écran en mode Live.',
+        ['Dans la zone Appareils, cliquez sur « + Ajouter » pour trouver CyberPi.','Branchez le câble, allumez le robot, puis cliquez sur « Connecter ».','Le bloc d\'affichage est dans la catégorie Écran (ou Affichage).'],['m_mbot','m_usb','m_pc'],[],['c_mblock']),
+      task('x_telev','Premier téléversement',1,'e1','Écrire un programme qui joue un son et allume les LED quand le CyberPi démarre. Le téléverser, débrancher le câble et tester.',
+        ['Utilisez l\'événement « quand CyberPi démarre ».','Passez en mode « Téléverser » avant de cliquer sur « Téléverser ».','Si rien ne se passe, éteignez puis rallumez le robot.'],['m_mbot','m_usb','m_pc'],[],['c_modes','c_event']),
+      task('x_capt','Chasse aux capteurs',1,'e1','Repérer sur le robot chaque capteur et chaque actionneur, et dire ce qu\'il mesure ou ce qu\'il fait. Placer chacun dans la chaîne d\'information ou d\'énergie.',
+        ['Regardez dessous, devant et sur la carte CyberPi.','Un capteur « prend une information », un actionneur « agit ».'],['m_mbot'],[],['c_capt','c_chaine']),
+      task('x_predire','Prédire avant de tester',1,'e2','Lire un programme sur papier et dessiner le trajet que fera le robot. Tester ensuite et comparer.',
+        ['Suivez les blocs un par un, de haut en bas.','Notez la distance et le sens de chaque virage.'],['m_mbot','m_regle'],['t_quad'],['c_seq','c_algo']),
+      task('x_algo','Écrire l\'algorithme d\'un trajet',1,'e2','Avant de programmer, écrire en phrases ou en organigramme le trajet départ → arrivée.',
+        ['Une ligne = une action.','Vérifiez votre algorithme en le « jouant » avec le doigt sur le tapis.'],[],['t_quad'],['c_algo']),
+      task('x_boucle','Raccourcir avec une boucle',2,'e3','Un programme de 8 blocs fait un carré. Le réécrire avec une boucle en 3 blocs maximum.',
+        ['Repérez les deux blocs qui se répètent.','Combien de fois se répètent-ils ?'],['m_mbot','m_pc'],[],['c_boucle']),
+      task('x_ultra','Lire le capteur à ultrasons',1,'e4','Afficher en continu sur l\'écran la distance mesurée par le capteur à ultrasons. Approcher la main et observer.',
+        ['Mettez l\'affichage dans un bloc « répéter indéfiniment ».','Le bloc de distance est dans la catégorie du capteur à ultrasons 2.'],['m_mbot','m_obst'],[],['c_ultra','c_debug']),
+      task('x_etal','Étalonner le robot',2,'e6','Mesurer la distance parcourue en 1 s à 50 % de puissance. En déduire le temps nécessaire pour parcourir exactement 1 m, puis vérifier.',
+        ['Faites 3 mesures et prenez la moyenne.','Proportionnalité : si 1 s donne d cm, combien de secondes pour 100 cm ?'],['m_mbot','m_regle'],['t_libre'],['c_moteur','c_var']),
+      task('x_coul','Les couleurs du capteur quad RVB',2,'e7','Afficher sur l\'écran la couleur détectée sous le robot, en le posant sur différentes zones.',
+        ['Utilisez le bloc qui renvoie la couleur détectée par un des capteurs.','Testez sur chaque couleur et notez les résultats.'],['m_mbot'],['t_coul'],['c_quad']),
+      task('x_monbloc','Créer mon bloc',2,'e8','Créer un bloc « polygone » avec deux paramètres : nombre de côtés et longueur. L\'utiliser pour tracer trois figures.',
+        ['Catégorie « Mes blocs » → « Créer un bloc ».','L\'angle de virage vaut 360 ÷ nombre de côtés.'],['m_mbot','m_pc'],['t_libre'],['c_bloc','c_boucle'])],
+    defis: [
+      task('d_pres','Le robot se présente',1,'e2','Le robot affiche son nom, allume ses LED d\'une couleur choisie et joue une petite mélodie.',
+        ['Trois catégories utiles : Écran, Éclairage, Audio.','Ajoutez des attentes entre les actions pour qu\'on ait le temps de voir.'],['m_mbot','m_pc'],['t_libre'],['c_seq','c_sortie']),
+      task('d_ar','Aller-retour',1,'e2','Le robot va jusqu\'à la ligne d\'arrivée puis revient exactement au départ.',
+        ['Pour revenir : faire demi-tour (180°) ou reculer ?','Mesurez la distance avant de programmer.'],['m_mbot','m_regle'],['t_libre'],['c_seq','c_moteur']),
+      task('d_carre','Le carré parfait',2,'e3','Le robot trace un carré de 40 cm de côté avec le programme le plus court possible.',
+        ['Combien de côtés ? Combien de virages ?','Un bloc « répéter 4 fois » peut contenir « avancer » et « tourner ».','Si le carré ne se ferme pas, ajustez l\'angle ou utilisez le bloc qui tourne d\'un angle précis.'],['m_mbot','m_regle'],['t_quad'],['c_boucle','c_moteur']),
+      task('d_poly','Polygones',2,'e3','Tracer un triangle, puis un hexagone, en changeant seulement deux nombres dans le programme.',
+        ['Le robot fait un tour complet (360°) en traçant la figure.','Angle de virage = 360 ÷ nombre de côtés.'],['m_mbot'],['t_libre'],['c_boucle','c_ops']),
+      task('d_stop','Stop obstacle',1,'e4','Le robot avance et s\'arrête tout seul à 15 cm d\'un obstacle.',
+        ['« Répéter jusqu\'à ce que la distance < 15 » puis arrêter les moteurs.','Testez avec un obstacle large et plat.'],['m_mbot','m_obst'],['t_libre'],['c_ultra','c_jusqua']),
+      task('d_radar','Radar de recul',2,'e4','Plus l\'obstacle est proche, plus les LED passent du vert à l\'orange puis au rouge, et le robot bipe quand c\'est très près.',
+        ['Choisissez trois zones : loin, moyen, près.','Utilisez des « si… alors… sinon » imbriqués.'],['m_mbot','m_obst'],[],['c_si','c_ops','c_ultra']),
+      task('d_evite','Évite l\'obstacle',2,'e4','Le robot avance ; devant un obstacle, il recule un peu, tourne et repart.',
+        ['Tout doit être dans un « répéter indéfiniment ».','Si obstacle < 20 cm : reculer, tourner ; sinon : avancer.'],['m_mbot','m_obst'],['t_libre'],['c_si','c_ultra']),
+      task('d_tele','Télécommande à boutons',2,'e5','Piloter le robot avec le joystick et les boutons du CyberPi : avancer, tourner, s\'arrêter, klaxonner.',
+        ['Un événement par direction du joystick.','Que doit faire le robot quand on relâche le joystick ?'],['m_mbot'],['t_libre'],['c_event']),
+      task('d_compte','Compteur de passages',2,'e6','Le robot compte combien de fois on passe la main devant lui et affiche le total.',
+        ['Créez une variable « compteur », mise à 0 au départ.','Attendez que la main reparte avant de compter à nouveau.'],['m_mbot'],[],['c_var','c_ultra']),
+      task('d_ligne','Suivi de ligne simple',2,'e7','Le robot fait un tour complet de la piste sans en sortir.',
+        ['Regardez ce que voient les capteurs du milieu quand le robot dévie.','Si la ligne est à gauche : tourner à gauche ; sinon si elle est à droite : tourner à droite ; sinon : avancer.','Roulez lentement d\'abord.'],['m_mbot'],['t_ligne'],['c_quad','c_si']),
+      task('d_fluide','Suivi de ligne fluide',3,'e7','Le robot suit la ligne sans zigzaguer, le plus vite possible. Chronométrez votre meilleur tour.',
+        ['Utilisez la valeur d\'écart (déviation) donnée par le capteur quad RVB.','Vitesse roue gauche = base + k × écart, roue droite = base − k × écart.','Cherchez la meilleure valeur de k : trop grand, ça zigzague ; trop petit, ça sort dans les virages.'],['m_mbot','m_chrono'],['t_ligne'],['c_prop','c_var']),
+      task('d_carref','Arrêt au 3e carrefour',3,'e8','Le robot suit la ligne, compte les croisements et s\'arrête au troisième.',
+        ['À un croisement, les quatre capteurs voient du noir en même temps.','Une variable compte les croisements ; attention à ne pas compter deux fois le même.','Créez un bloc « suivre la ligne » pour garder un programme lisible.'],['m_mbot'],['t_croix'],['c_quad','c_var','c_bloc']),
+      task('d_livreur','Le robot livreur',3,'e9','Le robot suit la ligne, s\'arrête sur la zone de la couleur demandée (choisie avec un bouton), joue un son, puis revient.',
+        ['Le bouton choisit la couleur : mémorisez-la dans une variable.','Comparez la couleur vue avec la couleur demandée.','Découpez en blocs : choisir, suivre, livrer, revenir.'],['m_mbot'],['t_coul','t_ligne'],['c_quad','c_var','c_bloc','c_etats']),
+      task('d_sumo','Sumo',3,'e9','Le robot reste dans l\'arène, cherche l\'adversaire et le pousse dehors.',
+        ['Deux priorités : ne jamais sortir (capteur quad RVB) et trouver l\'adversaire (ultrasons).','Utilisez une variable « mode » : chercher, attaquer, reculer.','Testez chaque mode séparément avant de tout assembler.'],['m_mbot'],['t_sumo'],['c_etats','c_ultra','c_quad']),
+      task('d_laby','Labyrinthe',3,'e9','Le robot sort du labyrinthe sans aide.',
+        ['Règle de la main droite : toujours longer le mur de droite.','Tournez de 90° précis grâce au gyroscope ou aux encodeurs.','Mémorisez le chemin dans une liste pour le refaire plus vite.'],['m_mbot'],['t_laby'],['c_etats','c_gyro','c_listes'])]};
+  return {lib, id};
+}
+
 function loadExample(){
   commit(()=>{
-    const {lib, id} = exampleData(); mergeLib(lib);
-    // id réel de chaque élément d'exemple (un élément de même titre déjà présent est réutilisé)
-    const real = {}; for (const k of Object.keys(lib)) for (const it of lib[k]){ const f = D.lib[k].find(x=>norm(x.titre)===norm(it.titre)); if (f) real[it.id] = f.id; }
-    const ok = k => real[id[k]] || null;
+    const {lib, id} = exampleData(); const {map} = mergeLib(lib);
+    const ok = k => id[k] ? (map[id[k]] || id[k]) : null;
     const c = {id:uid(), nom:'Club robotique (exemple)'}; D.classes.push(c);
     const names = ['Alix Martin','Bilal Durand','Chloé Petit','Dylan Moreau','Emma Leroy','Farid Roux','Gabin Fournier','Hana Girard','Inès Bonnet','Jules Mercier','Kenza Lambert','Léo Fontaine'];
     const els = names.map(n => { const [p,...r] = n.split(' '); const e = {id:uid(),prenom:p,nom:r.join(' '),classeId:c.id,remarque:''}; D.eleves.push(e); return e.id; });
@@ -1174,7 +1460,15 @@ function loadExample(){
 }
 
 /* ─────────────── Démarrage ─────────────── */
-if (/^#(code=|eleve)/.test(location.hash)) studentApp(); else { if (U.mode==='projo' && !byId(D.seances,U.seanceId)) U.mode=''; render(); liveTick(); }
+(async () => {
+  if (await dbxHandleRedirect()) return startProf();
+  if (/^#(code=|eleve)/.test(location.hash)) return studentApp();
+  if (location.hash==='#prof') return startProf();
+  const role = localStorage.getItem(ROLE_KEY);
+  if (role==='prof') return startProf();
+  if (role==='eleve') return studentApp();
+  splash();
+})();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
