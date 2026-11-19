@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robotique — gestion de classe</title>
+<meta name="theme-color" content="#0E7490">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A4%96%3C/text%3E%3C/svg%3E">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap');
+:root{--bg:#F5F3EE;--sur:#FFF;--brd:#D2CEC2;--tx:#19170E;--mut:#6B675C;--acc:#0E7490;--acc-l:#DDF1F6;--red:#B91C1C;--red-l:#FBE2E0;--sh:0 2px 8px rgba(0,0,0,.07);--r:10px}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font:14px/1.4 'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--tx);display:flex;flex-direction:column}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--brd);background:var(--sur);border-radius:8px;padding:6px 11px}
+button:hover{border-color:var(--acc)}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.danger{background:var(--red);border-color:var(--red);color:#fff}
+button.ghost{background:transparent;border-style:dashed;color:var(--mut);width:100%}
+button.x{border:none;background:transparent;padding:2px 6px;font-size:18px;line-height:1;color:var(--mut)}
+button.x.del{background:var(--red-l);color:var(--red);border-radius:6px;font-size:15px}
+input[type=text],input[type=date],input[type=number],input:not([type]),select,textarea{border:1px solid var(--brd);border-radius:8px;padding:6px 8px;background:var(--sur)}
+textarea{resize:vertical;width:100%}
+h1,h2,h3{font-family:'DM Serif Display',serif;font-weight:400;margin:0}
+.muted{color:var(--mut)}
+a{color:inherit}
+/* En-tête */
+header{display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(--sur);border-bottom:1px solid var(--brd);flex-wrap:wrap}
+header h1{font-size:22px;color:var(--acc);white-space:nowrap}
+nav{display:flex;gap:2px;flex-wrap:wrap}
+nav button{border:none;background:transparent;border-radius:8px;padding:7px 11px;color:var(--mut)}
+nav button.on{background:var(--acc-l);color:var(--acc);font-weight:600}
+header .sp{flex:1}
+.ver{font-size:11px;color:var(--mut)}
+main{flex:1;overflow:auto;padding:12px 14px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.bar .sp{flex:1}
+.card{background:var(--sur);border:1px solid var(--brd);border-radius:var(--r);box-shadow:var(--sh);padding:12px}
+.empty{max-width:520px;margin:60px auto;text-align:center}
+.empty p{color:var(--mut)}
+/* Tableau kanban */
+.board{display:flex;gap:10px;align-items:flex-start;overflow-x:auto;padding-bottom:12px;min-height:60vh}
+.col{flex:0 0 240px;background:#EDEAE2;border:1px solid var(--brd);border-radius:var(--r);padding:8px;display:flex;flex-direction:column;gap:6px;min-height:200px}
+.col.pal{flex-basis:220px;background:var(--sur);position:sticky;left:0;z-index:2;max-height:78vh;overflow:auto}
+.col.res{background:#E8E4DA}
+.col.hot,.abs.hot{outline:3px solid var(--acc);outline-offset:-1px;background:var(--acc-l)}
+.colh{display:flex;align-items:center;gap:6px}
+.colh b{font-size:15px}
+.colh .cnt{font-size:12px;background:var(--sur);border-radius:10px;padding:0 7px;color:var(--mut)}
+.eqname{flex:1;min-width:0;font-weight:600;border:1px solid transparent!important;background:transparent!important;padding:3px 4px!important}
+.eqname:focus{border-color:var(--brd)!important;background:var(--sur)!important}
+.warn{font-size:12px;background:#FEF3C7;color:#92400E;border-radius:10px;padding:1px 7px;cursor:help;white-space:nowrap}
+.sub{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-top:4px}
+.zone{display:flex;flex-wrap:wrap;gap:5px;min-height:34px}
+.hint{font-size:12px;color:var(--mut);padding:8px;border:1px dashed var(--brd);border-radius:8px;width:100%;text-align:center}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--sur);border:1px solid var(--brd);border-radius:20px;padding:3px 9px 3px 3px;cursor:grab;touch-action:none;user-select:none;font-size:13px}
+.av{width:22px;height:22px;border-radius:50%;display:inline-grid;place-items:center;font-size:10px;font-weight:600;color:#fff;flex:none}
+.task{background:var(--sur);border:1px solid var(--brd);border-left:4px solid var(--mut);border-radius:8px;padding:6px 8px;cursor:grab;touch-action:none;user-select:none;display:flex;gap:6px;align-items:flex-start}
+.task .tt{flex:1;font-size:13px}
+.task .meta{font-size:11px;color:var(--mut)}
+.stbtn{border:none;padding:1px 7px;border-radius:10px;font-size:11px;white-space:nowrap;color:#fff}
+.mats{display:flex;flex-wrap:wrap;gap:4px}
+.mat{font-size:12px;background:var(--acc-l);color:var(--acc);border-radius:6px;padding:2px 4px 2px 7px;display:inline-flex;align-items:center;gap:2px;cursor:grab;touch-action:none;user-select:none}
+.mat button{border:none;background:transparent;padding:0 3px;color:var(--red)}
+.obs{font-size:12px;min-height:34px}
+.abs{margin-top:auto;border-top:1px dashed var(--brd);padding-top:6px;border-radius:8px;min-height:50px}
+.abs .chip{opacity:.6}
+.lib{background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:6px 8px;cursor:grab;touch-action:none;user-select:none;font-size:13px}
+.lib small{display:block;color:var(--mut);font-size:11px}
+.tabs{display:flex;gap:3px;flex-wrap:wrap}
+.tabs button{padding:3px 8px;font-size:12px;border-radius:14px}
+.tabs button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.dragging{opacity:.35}
+.ghostdrag{position:fixed;pointer-events:none;z-index:1000;transform:rotate(-2deg);box-shadow:0 8px 20px rgba(0,0,0,.2);opacity:.95}
+.addcol{flex:0 0 120px;min-height:80px;border:2px dashed var(--brd);background:transparent;color:var(--mut);border-radius:var(--r)}
+.sinfo{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.sinfo input.t{flex:1;min-width:180px}
+/* Tables */
+table{border-collapse:collapse}
+.mx{font-size:12px}
+.mx th,.mx td{border:1px solid var(--brd);padding:0;text-align:center;min-width:28px;height:28px}
+.mx th.v{writing-mode:vertical-rl;transform:rotate(180deg);padding:4px 2px;font-weight:500;height:auto;white-space:nowrap}
+.mx th.r{text-align:right;padding:0 8px;white-space:nowrap;font-weight:500;position:sticky;left:0;background:var(--sur)}
+.mx td.c{cursor:pointer}
+.mx td.self{background:#E5E1D6}
+.wrap{overflow:auto;max-width:100%}
+.prog th,.prog td{border:1px solid var(--brd);padding:4px 6px;font-size:12px}
+.prog th.r{position:sticky;left:0;background:var(--sur);text-align:left;white-space:nowrap}
+.prog thead th{background:var(--sur);vertical-align:bottom;max-width:120px}
+.pc{width:100%;border:none;border-radius:6px;padding:4px;font-size:12px;min-width:72px}
+.pc.man{box-shadow:inset 0 0 0 2px #19170E55}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.it h3{font-size:18px;margin-bottom:4px}
+.it p{margin:4px 0;color:var(--mut);font-size:13px;white-space:pre-wrap}
+.tag{display:inline-block;font-size:11px;background:var(--acc-l);color:var(--acc);border-radius:6px;padding:1px 6px;margin:2px 3px 0 0}
+.tl{display:flex;flex-direction:column;gap:8px}
+.tl .card h3{font-size:17px}
+.tl .eqline{font-size:13px;margin:3px 0}
+.sec{margin-bottom:16px}
+.sec h2{font-size:20px;margin-bottom:8px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:5px 0}
+/* Modales */
+.ov{position:fixed;inset:0;background:rgba(25,23,14,.35);display:grid;place-items:center;z-index:500;padding:12px}
+.modal{background:var(--sur);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.25);width:min(620px,100%);max-height:92vh;display:flex;flex-direction:column}
+.mh{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--brd)}
+.mh h3{flex:1;font-size:20px}
+.mb{padding:14px;overflow:auto}
+.mf{display:flex;gap:8px;justify-content:flex-end;padding:10px 14px;border-top:1px solid var(--brd);flex-wrap:wrap}
+.mf .l{margin-right:auto}
+.fld{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.fld>span{font-size:12px;color:var(--mut);font-weight:500}
+.multi{display:flex;flex-wrap:wrap;gap:4px}
+.pick{font-size:12px;padding:3px 8px;border-radius:14px}
+.pick.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.stars .star{border:none;background:none;font-size:22px;color:#D2CEC2;padding:0 2px}
+.stars .star.on{color:#D97706}
+.st{display:flex;gap:4px;flex-wrap:wrap}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--tx);color:#fff;padding:8px 16px;border-radius:20px;z-index:2000;font-size:13px}
+.kv{font-size:13px}
+.kv td{padding:2px 8px 2px 0;vertical-align:top}
+@media (max-width:700px){header h1{font-size:18px}.col{flex-basis:200px}}
+</style>
+</head>
+<body>
+<header id="hd"></header>
+<main id="main"></main>
+<script>
+'use strict';
+const APP_VERSION = 'v1.0.0';
+const KEY = 'robotique-data-v1', UIKEY = 'robotique-ui-v1';
+
+/* ─────────────── Utilitaires ─────────────── */
+function h(tag, props, ...kids){
+  const el = document.createElement(tag); let val;
+  if (props) for (const [k,v] of Object.entries(props)){
+    if (v==null || v===false) continue;
+    if (k==='class') el.className = v;
+    else if (k==='style' && typeof v==='object') Object.assign(el.style, v);
+    else if (k==='dataset') Object.assign(el.dataset, v);
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k==='value') val = v;
+    else if (k==='checked' || k==='textContent' || k==='disabled') el[k] = v;
+    else el.setAttribute(k, v===true ? '' : v);
+  }
+  for (const c of kids.flat(Infinity)){ if (c==null || c===false) continue; el.append(c instanceof Node ? c : String(c)); }
+  if (val!==undefined) el.value = val;
+  return el;
+}
+const uid = () => Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-4);
+const byId = (arr,id) => arr.find(x => x.id===id);
+const today = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const fmtDate = s => s ? new Date(s+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'2-digit'}) : '';
+const hue = s => { let x=7; for (const c of String(s)) x=(x*31+c.charCodeAt(0))%360; return x; };
+const cmpDate = (a,b) => (a.date||'').localeCompare(b.date||'');
+const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+function toast(msg){ const t=h('div',{class:'toast'},msg); document.body.append(t); setTimeout(()=>t.remove(),2200); }
+function download(name, text){ const a=h('a',{href:URL.createObjectURL(new Blob([text],{type:'application/json'})),download:name}); document.body.append(a); a.click(); a.remove(); }
+
+/* ─────────────── Données ─────────────── */
+const TYPES = {
+  defis:        {label:'Défis', one:'défi', icon:'🏆', task:true},
+  exercices:    {label:'Exercices', one:'exercice', icon:'📝', task:true},
+  etapes:       {label:'Progression', one:'étape', icon:'📈'},
+  connaissances:{label:'Connaissances', one:'connaissance', icon:'💡'},
+  materiels:    {label:'Matériels', one:'matériel', icon:'🤖'},
+  tapis:        {label:'Tapis', one:'tapis', icon:'🗺️'},
+};
+const TASK_FIELDS = [['titre','Titre'],['niveau','Difficulté','stars'],['etapeId','Étape de progression','etape'],['description','Consigne','textarea'],
+  ['materiels','Matériel','multi','materiels'],['tapis','Tapis','multi','tapis'],['connaissances','Connaissances mobilisées','multi','connaissances']];
+TYPES.defis.fields = TASK_FIELDS; TYPES.exercices.fields = TASK_FIELDS;
+TYPES.etapes.fields = [['titre','Titre'],['description','Objectif','textarea'],['connaissances','Connaissances visées','multi','connaissances']];
+TYPES.connaissances.fields = [['titre','Intitulé'],['domaine','Domaine / thème'],['description','Description','textarea']];
+TYPES.materiels.fields = [['titre','Nom'],['quantite','Quantité disponible','number'],['description','Remarques','textarea']];
+TYPES.tapis.fields = [['titre','Nom'],['dimensions','Dimensions'],['description','Description','textarea']];
+
+const ST = {
+  afaire:   {l:'À faire', c:'#78716C'},
+  encours:  {l:'En cours', c:'#D97706'},
+  reussi:   {l:'Réussi', c:'#16A34A'},
+  reprendre:{l:'À reprendre', c:'#DC2626'},
+};
+const ST_ORDER = ['afaire','encours','reussi','reprendre'];
+const PST = { non:{l:'Non commencé',c:'#F1EFE9',t:'#6B675C'}, encours:{l:'En cours',c:'#FDE68A',t:'#78350F'}, acquis:{l:'Acquis',c:'#86EFAC',t:'#14532D'} };
+
+function emptyData(){ return {v:1, classes:[], eleves:[], lib:{defis:[],exercices:[],etapes:[],connaissances:[],materiels:[],tapis:[]}, seances:[], prog:{}}; }
+function normalize(d){
+  const e = emptyData(); d = Object.assign(e, d||{});
+  d.lib = Object.assign(emptyData().lib, d.lib||{});
+  for (const s of d.seances){ s.equipes = s.equipes||[]; s.reserve = s.reserve||[]; s.absents = s.absents||[];
+    for (const q of s.equipes){ q.eleves=q.eleves||[]; q.taches=q.taches||[]; q.materiels=q.materiels||[]; q.tapis=q.tapis||[]; } }
+  d.prog = d.prog||{};
+  return d;
+}
+let D = emptyData();
+try { const raw = localStorage.getItem(KEY); if (raw) D = normalize(JSON.parse(raw)); } catch(e){ console.warn(e); }
+let U = {view:'seance', classeId:null, seanceId:null, libType:'defis', palTab:'defis', teamSize:2};
+try { Object.assign(U, JSON.parse(localStorage.getItem(UIKEY)||'{}')); } catch(e){}
+const saveUI = () => { try{ localStorage.setItem(UIKEY, JSON.stringify(U)); }catch(e){} };
+
+const undoStack = [];
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(D)); } catch(e){ toast('⚠ Enregistrement impossible : '+e.message); } }
+function commit(fn, silent){
+  undoStack.push(JSON.stringify(D)); if (undoStack.length>50) undoStack.shift();
+  fn(); save(); if (!silent) render(); else renderHeader();
+}
+function undo(){ if (!undoStack.length) return toast('Rien à annuler'); D = normalize(JSON.parse(undoStack.pop())); save(); render(); toast('Action annulée'); }
+
+/* Accès */
+const curClasse = () => { let c = byId(D.classes, U.classeId); if (!c && D.classes.length){ c = D.classes[0]; U.classeId = c.id; } return c; };
+const elevesOf = cid => D.eleves.filter(e => e.classeId===cid).sort((a,b)=>(a.prenom+a.nom).localeCompare(b.prenom+b.nom,'fr'));
+const eleve = id => byId(D.eleves, id);
+const seancesOf = cid => D.seances.filter(s => s.classeId===cid).sort(cmpDate);
+const short = e => e ? e.prenom + (e.nom ? ' '+e.nom[0]+'.' : '') : '?';
+const full = e => e ? (e.prenom+' '+e.nom).trim() : '?';
+const initials = e => e ? ((e.prenom[0]||'')+(e.nom[0]||'')).toUpperCase() : '?';
+const refItem = t => t && t.ref ? byId(D.lib[t.ref.t]||[], t.ref.id) : null;
+const taskTitle = t => { const it = refItem(t); return it ? it.titre : (t.titre||'Tâche'); };
+const libTitle = (t,id) => { const it = byId(D.lib[t]||[], id); return it ? it.titre : '(supprimé)'; };
+
+function splitName(str){
+  const w = String(str).trim().replace(/[;,\t]+/g,' ').split(/\s+/).filter(Boolean);
+  if (!w.length) return null;
+  const isUp = x => x.length>1 && x===x.toUpperCase() && /[A-ZÀ-Ý]/.test(x);
+  const up = w.filter(isUp);
+  if (up.length && up.length < w.length) return {prenom: w.filter(x=>!isUp(x)).join(' '), nom: up.join(' ')};
+  return {prenom: w[0], nom: w.slice(1).join(' ')};
+}
+
+/* Historique des binômes */
+function pairMap(cid, excludeId){
+  const m = new Map();
+  for (const s of seancesOf(cid)){ if (s.id===excludeId) continue;
+    for (const q of s.equipes){ const ids = q.eleves;
+      for (let i=0;i<ids.length;i++) for (let j=i+1;j<ids.length;j++){
+        const k = [ids[i],ids[j]].sort().join('|'); if (!m.has(k)) m.set(k,[]); m.get(k).push({s,q}); } } }
+  return m;
+}
+const pairKey = (a,b) => [a,b].sort().join('|');
+
+/* Progression : statut automatique d'un élève pour une étape */
+function autoProg(eid, etapeId){
+  let st = 'non';
+  for (const s of D.seances) for (const q of s.equipes){ if (!q.eleves.includes(eid)) continue;
+    for (const t of q.taches){ const it = refItem(t); if (!it || it.etapeId!==etapeId) continue;
+      if (t.statut==='reussi') return 'acquis'; if (t.statut!=='afaire') st = 'encours'; } }
+  return st;
+}
+const progOf = (eid, etapeId) => (D.prog[eid]||{})[etapeId] || autoProg(eid, etapeId);
+
+/* Tâches d'un élève (toutes séances) */
+function tasksOfEleve(eid){
+  const out = [];
+  for (const s of D.seances.slice().sort(cmpDate)) for (const q of s.equipes) if (q.eleves.includes(eid)) for (const t of q.taches) out.push({s,q,t});
+  return out;
+}
+
+/* ─────────────── Modales ─────────────── */
+function modal(title, body, actions){
+  const ov = h('div',{class:'ov'}); const close = () => ov.remove();
+  ov.addEventListener('pointerdown', e => { if (e.target===ov) close(); });
+  const box = h('div',{class:'modal'},
+    h('div',{class:'mh'}, h('h3',null,title), h('button',{class:'x',title:'Fermer',onclick:close},'×')),
+    h('div',{class:'mb'}, body),
+    actions && actions.length ? h('div',{class:'mf'}, actions.map(a => h('button',{class:a.cls||'', onclick:()=>{ if (a.fn && a.fn()===false) return; close(); }}, a.l))) : null);
+  ov.append(box); document.body.append(ov);
+  const f = box.querySelector('.mb input,.mb textarea'); if (f) setTimeout(()=>f.focus(),30);
+  return close;
+}
+function confirmBox(msg, fn, label){ modal('Confirmer', h('p',null,msg), [{l:'Annuler'},{l:label||'Supprimer',cls:'danger',fn}]); }
+
+/* Formulaire générique */
+function field(fd, f){
+  const [key,label,kind,extra] = fd; let inp;
+  if (kind==='textarea') inp = h('textarea',{rows:3,value:f[key]||'',oninput:e=>f[key]=e.target.value});
+  else if (kind==='number') inp = h('input',{type:'number',min:0,value:f[key]??'',oninput:e=>f[key]=e.target.value===''?'':+e.target.value});
+  else if (kind==='stars'){ inp = h('div',{class:'stars'}); const draw=()=>inp.replaceChildren(...[1,2,3].map(n=>h('button',{type:'button',class:'star'+(n<=(f[key]||0)?' on':''),onclick:()=>{f[key]=f[key]===n?0:n;draw();}},'★'))); draw(); }
+  else if (kind==='etape') inp = h('select',{value:f[key]||'',onchange:e=>f[key]=e.target.value}, h('option',{value:''},'—'), D.lib.etapes.map((s,i)=>h('option',{value:s.id},(i+1)+'. '+s.titre)));
+  else if (kind==='multi'){ f[key] = [...(f[key]||[])];
+    inp = h('div',{class:'multi'}, D.lib[extra].length ? D.lib[extra].map(it => { const b = h('button',{type:'button',class:'pick'+(f[key].includes(it.id)?' on':''),onclick:()=>{ const i=f[key].indexOf(it.id); if(i<0) f[key].push(it.id); else f[key].splice(i,1); b.classList.toggle('on'); }}, TYPES[extra].icon+' '+it.titre); return b; }) : h('span',{class:'muted'},'Rien dans « '+TYPES[extra].label+' » pour l\'instant.')); }
+  else inp = h('input',{type:'text',value:f[key]||'',oninput:e=>f[key]=e.target.value});
+  return h('div',{class:'fld'}, h('span',null,label), inp);
+}
+function editItem(type, item){
+  const isNew = !item; const f = item ? JSON.parse(JSON.stringify(item)) : {id:uid()};
+  const body = h('div',null, TYPES[type].fields.map(fd => field(fd,f)));
+  const acts = [];
+  if (!isNew) acts.push({l:'🗑 Supprimer',cls:'danger l',fn:()=>{ confirmBox('Supprimer « '+(item.titre||'')+' » ?', ()=>commit(()=>deleteItem(type,item.id))); }});
+  acts.push({l:'Annuler'},{l:isNew?'Ajouter':'Enregistrer',cls:'pri',fn:()=>{
+    if (!String(f.titre||'').trim()){ toast('Un titre est nécessaire'); return false; }
+    commit(()=>{ if (isNew) D.lib[type].push(f); else Object.assign(item, f); }); }});
+  modal((isNew?'Nouveau : ':'Modifier : ')+TYPES[type].one, body, acts);
+}
+function deleteItem(type, id){
+  D.lib[type] = D.lib[type].filter(x => x.id!==id);
+  for (const arr of Object.values(D.lib)) for (const it of arr){
+    for (const k of ['materiels','tapis','connaissances']) if (Array.isArray(it[k])) it[k] = it[k].filter(x=>x!==id);
+    if (it.etapeId===id) it.etapeId = ''; }
+  for (const s of D.seances) for (const q of s.equipes){ q.materiels = q.materiels.filter(x=>x!==id); q.tapis = q.tapis.filter(x=>x!==id); }
+  for (const p of Object.values(D.prog)) delete p[id];
+}
+
+/* ─────────────── En-tête ─────────────── */
+const VIEWS = [['seance','🧩 Séance'],['eleves','👥 Élèves'],['historique','🔁 Historique'],['progression','📈 Progression'],['biblio','📚 Bibliothèque'],['donnees','⚙️ Données']];
+function renderHeader(){
+  const hd = document.getElementById('hd'); const c = curClasse();
+  hd.replaceChildren(
+    h('h1',null,'🤖 Robotique'),
+    h('nav',null, VIEWS.map(([k,l]) => h('button',{class:U.view===k?'on':'',onclick:()=>{U.view=k;saveUI();render();}},l))),
+    h('span',{class:'sp'}),
+    D.classes.length && !['biblio','donnees'].includes(U.view) ? h('select',{value:c?c.id:'',title:'Classe',onchange:e=>{U.classeId=e.target.value;U.seanceId=null;saveUI();render();}}, D.classes.map(x=>h('option',{value:x.id},x.nom))) : null,
+    h('button',{title:'Annuler la dernière action (Ctrl+Z)',onclick:undo,disabled:!undoStack.length},'↶'),
+    h('span',{class:'ver'},APP_VERSION));
+}
+function render(){
+  renderHeader();
+  const m = document.getElementById('main'); const sx = m.scrollLeft, sy = m.scrollTop;
+  const bx = (m.querySelector('.board')||{}).scrollLeft||0;
+  m.replaceChildren();
+  ({seance:vSeance, eleves:vEleves, historique:vHistorique, progression:vProgression, biblio:vBiblio, donnees:vDonnees}[U.view]||vSeance)(m);
+  m.scrollLeft = sx; m.scrollTop = sy; const b = m.querySelector('.board'); if (b) b.scrollLeft = bx;
+  saveUI();
+}
+function needClasse(m){
+  m.append(h('div',{class:'empty card'}, h('h2',null,'Bienvenue 👋'),
+    h('p',null,'Commencez par créer une classe et ses élèves (onglet Données), ou importez-les depuis PlanClasse. Vous pouvez aussi charger un exemple pour essayer.'),
+    h('div',{class:'row',style:{justifyContent:'center'}}, h('button',{class:'pri',onclick:()=>{U.view='donnees';render();}},'⚙️ Données'), h('button',{onclick:loadExample},'Charger l\'exemple'))));
+}
+
+/* ─────────────── Vue Séance (kanban) ─────────────── */
+const newEq = s => ({id:uid(), nom:'Équipe '+(s.equipes.length+1), eleves:[], taches:[], materiels:[], tapis:[], obs:''});
+const newTask = (ref, titre) => ({id:uid(), ref, titre:titre||'', statut:'afaire', note:''});
+
+function vSeance(m){
+  const c = curClasse(); if (!c) return needClasse(m);
+  const ses = seancesOf(c.id).reverse();
+  let s = byId(D.seances, U.seanceId); if (!s || s.classeId!==c.id) s = ses[0]; U.seanceId = s ? s.id : null;
+  m.append(h('div',{class:'bar'},
+    ses.length ? h('select',{value:s.id,onchange:e=>{U.seanceId=e.target.value;render();}}, ses.map(x=>h('option',{value:x.id},fmtDate(x.date)+(x.titre?' — '+x.titre:'')))) : null,
+    h('button',{class:'pri',onclick:()=>newSeance(c)},'+ Nouvelle séance'),
+    s && h('button',{onclick:()=>autoTeams(s)},'🎲 Équipes auto'),
+    s && h('button',{onclick:()=>commit(()=>s.equipes.push(newEq(s)))},'+ Équipe'),
+    h('span',{class:'sp'}),
+    s && h('button',{class:'danger',onclick:()=>confirmBox('Supprimer la séance du '+fmtDate(s.date)+' ? (équipes, tâches et observations)',()=>commit(()=>{D.seances=D.seances.filter(x=>x!==s);U.seanceId=null;}))},'🗑 Séance')));
+  if (!s){ m.append(h('div',{class:'empty card'}, h('h2',null,'Aucune séance pour '+c.nom), h('p',null,'Créez une séance pour former les équipes et distribuer les tâches.'), h('button',{class:'pri',onclick:()=>newSeance(c)},'+ Nouvelle séance'))); return; }
+
+  m.append(h('div',{class:'sinfo'},
+    h('input',{type:'date',value:s.date,onchange:e=>commit(()=>s.date=e.target.value)}),
+    h('input',{class:'t',placeholder:'Titre de la séance (ex. : Défi suivi de ligne)',value:s.titre||'',onchange:e=>commit(()=>s.titre=e.target.value,true)}),
+    h('input',{class:'t',placeholder:'Notes de séance…',value:s.notes||'',onchange:e=>commit(()=>s.notes=e.target.value,true)})));
+
+  const pm = pairMap(c.id, s.id);
+  const placed = new Set(s.equipes.flatMap(q=>q.eleves)); const abs = new Set(s.absents);
+  const libres = elevesOf(c.id).filter(e => !placed.has(e.id) && !abs.has(e.id));
+
+  // Palette
+  const pt = U.palTab in D.lib ? U.palTab : 'defis';
+  const palItems = pt==='etapes' ? [] : D.lib[pt];
+  const pal = h('div',{class:'col pal',dataset:{drop:'palette'},title:'Déposez ici une tâche ou un matériel pour le retirer'},
+    h('div',{class:'colh'}, h('b',null,'Palette')),
+    h('div',{class:'tabs'}, ['defis','exercices','materiels','tapis'].map(t => h('button',{class:pt===t?'on':'',onclick:()=>{U.palTab=t;render();}}, TYPES[t].icon+' '+TYPES[t].label))),
+    palItems.length ? palItems.map(it => h('div',{class:'lib',dataset:{drag:JSON.stringify({k:'lib',t:pt,id:it.id})},onclick:()=>{ if(!dragJust) editItem(pt,it); }},
+        TYPES[pt].icon+' '+it.titre, (it.niveau? ' '+'★'.repeat(it.niveau):''),
+        h('small',null, pt==='materiels' ? (it.quantite!==''&&it.quantite!=null ? 'Quantité : '+it.quantite : '') : pt==='tapis' ? (it.dimensions||'') : (it.etapeId ? 'Étape : '+libTitle('etapes',it.etapeId) : ''))))
+      : h('div',{class:'hint'},'Aucun élément. Ajoutez-en dans la Bibliothèque.'),
+    h('button',{class:'ghost',onclick:()=>editItem(pt,null)},'+ '+TYPES[pt].one),
+    h('div',{class:'muted',style:{fontSize:'11px'}},'Glissez un élément vers une équipe. Déposez ici une tâche pour la retirer.'));
+
+  // Réserve
+  const res = h('div',{class:'col res',dataset:{drop:'reserve'}},
+    h('div',{class:'colh'}, h('b',null,'Réserve'), h('span',{class:'cnt'},libres.length)),
+    h('div',{class:'zone'}, libres.length ? libres.map(chipEl) : h('div',{class:'hint'},'Tous les élèves sont placés')),
+    h('div',{class:'sub'},'Tâches à distribuer'),
+    s.reserve.map(t => taskEl(t,s)),
+    h('button',{class:'ghost',onclick:()=>addFreeTask(s,null)},'+ Tâche libre'),
+    h('div',{class:'abs',dataset:{drop:'absents'}}, h('div',{class:'sub'},'Absents ('+abs.size+')'),
+      h('div',{class:'zone'}, [...abs].map(id=>chipEl(eleve(id))))));
+
+  const board = h('div',{class:'board'}, pal, res, s.equipes.map(q => colEq(s,q,pm)),
+    h('button',{class:'addcol',onclick:()=>commit(()=>s.equipes.push(newEq(s)))},'+ Équipe'));
+  m.append(board);
+}
+
+function chipEl(e){
+  if (!e) return null;
+  return h('span',{class:'chip',title:full(e),dataset:{drag:JSON.stringify({k:'eleve',id:e.id})},onclick:()=>{ if(!dragJust) ficheEleve(e); }},
+    h('span',{class:'av',style:{background:`hsl(${hue(e.id)} 45% 45%)`}}, initials(e)), short(e));
+}
+function taskEl(t, s){
+  const it = refItem(t); const st = ST[t.statut]||ST.afaire;
+  return h('div',{class:'task',style:{borderLeftColor:st.c},dataset:{drag:JSON.stringify({k:'tache',id:t.id})},onclick:()=>{ if(!dragJust) editTask(t,s); }},
+    h('div',{class:'tt'}, (it?TYPES[t.ref.t].icon+' ':'✏️ ')+taskTitle(t), it&&it.niveau ? h('span',{class:'meta'},' '+'★'.repeat(it.niveau)) : null,
+      t.note ? h('div',{class:'meta'},'📝 '+t.note) : null),
+    h('button',{class:'stbtn',style:{background:st.c},title:'Changer le statut',onclick:e=>{ e.stopPropagation(); commit(()=>t.statut=ST_ORDER[(ST_ORDER.indexOf(t.statut)+1)%ST_ORDER.length]); }}, st.l));
+}
+function colEq(s, q, pm){
+  const rep = [];
+  for (let i=0;i<q.eleves.length;i++) for (let j=i+1;j<q.eleves.length;j++){
+    const n = (pm.get(pairKey(q.eleves[i],q.eleves[j]))||[]).length;
+    if (n) rep.push(short(eleve(q.eleves[i]))+' + '+short(eleve(q.eleves[j]))+' : déjà '+n+' fois'); }
+  const mats = [...q.materiels.map(id=>['materiels',id]), ...q.tapis.map(id=>['tapis',id])];
+  return h('div',{class:'col',dataset:{drop:'eq:'+q.id}},
+    h('div',{class:'colh'},
+      h('input',{class:'eqname',value:q.nom,onchange:e=>commit(()=>q.nom=e.target.value,true)}),
+      rep.length ? h('span',{class:'warn',title:rep.join('\n')},'↺ '+rep.length) : null,
+      h('button',{class:'x del',title:'Supprimer l\'équipe (élèves et tâches retournent en réserve)',onclick:()=>commit(()=>{ s.reserve.push(...q.taches); s.equipes = s.equipes.filter(x=>x!==q); })},'×')),
+    h('div',{class:'zone'}, q.eleves.length ? q.eleves.map(id=>chipEl(eleve(id))) : h('div',{class:'hint'},'Glissez des élèves ici')),
+    h('div',{class:'sub'},'Tâches'),
+    q.taches.length ? q.taches.map(t=>taskEl(t,s)) : h('div',{class:'hint'},'Glissez un défi ou un exercice'),
+    mats.length ? h('div',null, h('div',{class:'sub'},'Matériel'), h('div',{class:'mats'}, mats.map(([t,id]) =>
+      h('span',{class:'mat',dataset:{drag:JSON.stringify({k:'mat',t,id,from:q.id})}}, TYPES[t].icon+' '+libTitle(t,id),
+        h('button',{title:'Retirer',onclick:e=>{e.stopPropagation();commit(()=>q[t]=q[t].filter(x=>x!==id));}},'×'))))) : null,
+    h('textarea',{class:'obs',rows:2,placeholder:'Observations…',value:q.obs||'',onchange:e=>commit(()=>q.obs=e.target.value,true)}));
+}
+
+function findTask(s, id){
+  let i = s.reserve.findIndex(t=>t.id===id); if (i>=0) return {list:s.reserve, i};
+  for (const q of s.equipes){ i = q.taches.findIndex(t=>t.id===id); if (i>=0) return {list:q.taches, i, q}; }
+  return null;
+}
+function doDrop(p, target){
+  const s = byId(D.seances, U.seanceId); if (!s || !target) return;
+  const q = target.startsWith('eq:') ? byId(s.equipes, target.slice(3)) : null;
+  if (p.k==='eleve'){
+    if (q && q.eleves.includes(p.id)) return;
+    commit(()=>{ for (const x of s.equipes) x.eleves = x.eleves.filter(id=>id!==p.id); s.absents = s.absents.filter(id=>id!==p.id);
+      if (q) q.eleves.push(p.id); else if (target==='absents') s.absents.push(p.id); });
+  } else if (p.k==='tache'){
+    const f = findTask(s, p.id); if (!f) return;
+    if (target==='palette') return commit(()=>f.list.splice(f.i,1));
+    if (target==='absents') return;
+    const dest = q ? q.taches : s.reserve; if (dest===f.list) return;
+    commit(()=>{ const [t] = f.list.splice(f.i,1); dest.push(t); });
+  } else if (p.k==='lib'){
+    if (TYPES[p.t].task){ if (target==='palette'||target==='absents') return; commit(()=>(q?q.taches:s.reserve).push(newTask({t:p.t,id:p.id}))); }
+    else if (q){ if (q[p.t].includes(p.id)) return; commit(()=>q[p.t].push(p.id)); }
+    else toast('Déposez le matériel sur une équipe');
+  } else if (p.k==='mat'){
+    const from = byId(s.equipes, p.from); if (!from) return;
+    if (q===from) return;
+    commit(()=>{ from[p.t] = from[p.t].filter(x=>x!==p.id); if (q && !q[p.t].includes(p.id)) q[p.t].push(p.id); });
+  }
+}
+
+/* Glisser-déposer à la souris, au doigt et au stylet (TNI, tablettes) */
+let drag = null, dragJust = false;
+document.addEventListener('pointerdown', e => {
+  const c = e.target.closest('[data-drag]'); if (!c || e.button>0) return;
+  if (e.target.closest('button,select,input,textarea')) return;
+  drag = {el:c, x:e.clientX, y:e.clientY, started:false, p:JSON.parse(c.dataset.drag), id:e.pointerId};
+});
+document.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId!==drag.id) return;
+  if (!drag.started){
+    if (Math.hypot(e.clientX-drag.x, e.clientY-drag.y) < 6) return;
+    drag.started = true; const r = drag.el.getBoundingClientRect();
+    drag.dx = drag.x - r.left; drag.dy = drag.y - r.top;
+    drag.g = drag.el.cloneNode(true); drag.g.classList.add('ghostdrag'); drag.g.style.width = r.width+'px';
+    document.body.append(drag.g); drag.el.classList.add('dragging');
+  }
+  e.preventDefault();
+  drag.g.style.left = (e.clientX-drag.dx)+'px'; drag.g.style.top = (e.clientY-drag.dy)+'px';
+  const t = document.elementFromPoint(e.clientX, e.clientY); const z = t && t.closest('[data-drop]');
+  if (z!==drag.hot){ if (drag.hot) drag.hot.classList.remove('hot'); drag.hot = z; if (z) z.classList.add('hot'); }
+  autoScroll(e);
+}, {passive:false});
+function endDrag(e, cancel){
+  if (!drag || e.pointerId!==drag.id) return;
+  const d = drag; drag = null;
+  if (!d.started) return;
+  d.g.remove(); d.el.classList.remove('dragging'); if (d.hot) d.hot.classList.remove('hot');
+  dragJust = true; setTimeout(()=>dragJust=false, 50);
+  if (!cancel && d.hot) doDrop(d.p, d.hot.dataset.drop);
+}
+document.addEventListener('pointerup', e => endDrag(e,false));
+document.addEventListener('pointercancel', e => endDrag(e,true));
+function autoScroll(e){
+  const b = document.querySelector('.board'); if (!b) return; const r = b.getBoundingClientRect();
+  if (e.clientX > r.right-50) b.scrollLeft += 14; else if (e.clientX < r.left+260 && e.clientX > r.left) b.scrollLeft -= 14;
+}
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape'){ const ov = [...document.querySelectorAll('.ov')].pop(); if (ov) ov.remove(); }
+  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z' && !e.target.closest('input,textarea')){ e.preventDefault(); undo(); }
+});
+
+/* Séances : création, tâches, équipes auto */
+function newSeance(c){
+  const prev = seancesOf(c.id).pop();
+  const f = {date:today(), titre:'', copy:!!prev, mats:true};
+  const body = h('div',null,
+    h('div',{class:'fld'}, h('span',null,'Date'), h('input',{type:'date',value:f.date,onchange:e=>f.date=e.target.value})),
+    h('div',{class:'fld'}, h('span',null,'Titre (facultatif)'), h('input',{type:'text',oninput:e=>f.titre=e.target.value})),
+    prev ? h('label',{class:'row'}, h('input',{type:'checkbox',checked:f.copy,onchange:e=>f.copy=e.target.checked}), 'Reprendre les équipes de la séance du '+fmtDate(prev.date)) : null,
+    prev ? h('label',{class:'row'}, h('input',{type:'checkbox',checked:f.mats,onchange:e=>f.mats=e.target.checked}), 'Reprendre aussi le matériel et les tâches non réussies') : null);
+  modal('Nouvelle séance — '+c.nom, body, [{l:'Annuler'},{l:'Créer',cls:'pri',fn:()=>commit(()=>{
+    const s = {id:uid(), classeId:c.id, date:f.date||today(), titre:f.titre, notes:'', equipes:[], reserve:[], absents:[]};
+    if (prev && f.copy) s.equipes = prev.equipes.map(q => ({id:uid(), nom:q.nom, eleves:[...q.eleves], obs:'',
+      materiels: f.mats ? [...q.materiels] : [], tapis: f.mats ? [...q.tapis] : [],
+      taches: f.mats ? q.taches.filter(t=>t.statut!=='reussi').map(t=>({...newTask(t.ref,t.titre), statut:t.statut==='afaire'?'afaire':'encours'})) : []}));
+    D.seances.push(s); U.seanceId = s.id; })}]);
+}
+function addFreeTask(s, q){
+  let titre = '';
+  modal('Tâche libre', h('div',{class:'fld'}, h('span',null,'Intitulé'), h('input',{type:'text',oninput:e=>titre=e.target.value,onkeydown:e=>{ if(e.key==='Enter'){ e.target.closest('.modal').querySelector('.mf .pri').click(); } }})),
+    [{l:'Annuler'},{l:'Ajouter',cls:'pri',fn:()=>{ if(!titre.trim()) return false; commit(()=>(q?q.taches:s.reserve).push(newTask(null,titre.trim()))); }}]);
+}
+function editTask(t, s){
+  const it = refItem(t); const f = {statut:t.statut, note:t.note||'', titre:t.titre||''};
+  const stRow = h('div',{class:'st'}); const drawSt = () => stRow.replaceChildren(...ST_ORDER.map(k => h('button',{type:'button',style:f.statut===k?{background:ST[k].c,color:'#fff',borderColor:ST[k].c}:{},onclick:()=>{f.statut=k;drawSt();}},ST[k].l))); drawSt();
+  const loc = findTask(s, t.id);
+  const body = h('div',null,
+    it ? h('div',{class:'card',style:{marginBottom:'10px',boxShadow:'none'}},
+      h('b',null, TYPES[t.ref.t].icon+' '+it.titre, it.niveau?' '+'★'.repeat(it.niveau):''),
+      it.description ? h('p',{style:{whiteSpace:'pre-wrap',margin:'6px 0'}}, it.description) : null,
+      ['materiels','tapis','connaissances'].map(k => (it[k]||[]).map(id=>h('span',{class:'tag'},TYPES[k].icon+' '+libTitle(k,id)))),
+      it.etapeId ? h('div',{class:'muted',style:{fontSize:'12px',marginTop:'4px'}},'Étape : '+libTitle('etapes',it.etapeId)) : null)
+      : h('div',{class:'fld'}, h('span',null,'Intitulé'), h('input',{type:'text',value:f.titre,oninput:e=>f.titre=e.target.value})),
+    h('div',{class:'fld'}, h('span',null,'Statut'), stRow),
+    h('div',{class:'fld'}, h('span',null,'Remarque'), h('textarea',{rows:2,value:f.note,oninput:e=>f.note=e.target.value})),
+    loc && loc.q ? h('div',{class:'muted',style:{fontSize:'12px'}}, loc.q.nom+' : '+loc.q.eleves.map(id=>full(eleve(id))).join(', ')) : null);
+  modal('Tâche', body, [
+    {l:'🗑 Retirer',cls:'danger l',fn:()=>commit(()=>{ const l=findTask(s,t.id); if(l) l.list.splice(l.i,1); })},
+    {l:'Donner à toutes les équipes',fn:()=>commit(()=>{ Object.assign(t,{statut:f.statut,note:f.note,titre:f.titre});
+      const l = findTask(s,t.id); if (l && !l.q) l.list.splice(l.i,1);
+      for (const q of s.equipes) if (!q.taches.some(x=>x.id===t.id || (t.ref && x.ref && x.ref.id===t.ref.id))) q.taches.push({...newTask(t.ref,t.titre)}); })},
+    {l:'Annuler'},
+    {l:'Enregistrer',cls:'pri',fn:()=>commit(()=>Object.assign(t,{statut:f.statut,note:f.note,titre:f.titre}))}]);
+}
+function autoTeams(s){
+  const opt = {size:U.teamSize||2, all:true};
+  const body = h('div',null,
+    h('p',{class:'muted'},'Répartit les élèves présents en évitant au maximum les binômes déjà formés lors des séances précédentes.'),
+    h('div',{class:'fld'}, h('span',null,'Élèves par équipe'), h('select',{value:String(opt.size),onchange:e=>opt.size=+e.target.value}, [2,3,4,5].map(n=>h('option',{value:String(n)},n)))),
+    h('label',{class:'row'}, h('input',{type:'checkbox',checked:true,onchange:e=>opt.all=e.target.checked}), 'Refaire toutes les équipes (sinon : placer seulement la réserve)'));
+  modal('Équipes automatiques', body, [{l:'Annuler'},{l:'Répartir',cls:'pri',fn:()=>{ U.teamSize = opt.size; commit(()=>makeTeams(s,opt.size,opt.all)); }}]);
+}
+function makeTeams(s, size, all){
+  const pm = pairMap(s.classeId, s.id); const abs = new Set(s.absents);
+  const w = (a,b) => { const n = (pm.get(pairKey(a,b))||[]).length; return n*n; };
+  const cost = team => { let c=0; for (let i=0;i<team.length;i++) for (let j=i+1;j<team.length;j++) c += w(team[i],team[j]); return c; };
+  const shuffle = a => { for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+  if (all){
+    const pool = elevesOf(s.classeId).filter(e=>!abs.has(e.id)).map(e=>e.id);
+    const k = Math.max(1, Math.round(pool.length/size));
+    let best=null, bc=Infinity;
+    for (let tr=0; tr<200; tr++){
+      const p = shuffle(pool.slice()); const teams = Array.from({length:k},()=>[]); p.forEach((id,i)=>teams[i%k].push(id));
+      for (let it=0; it<300; it++){ // amélioration par échanges
+        const a = Math.floor(Math.random()*k), b = Math.floor(Math.random()*k); if (a===b || !teams[a].length || !teams[b].length) continue;
+        const i = Math.floor(Math.random()*teams[a].length), j = Math.floor(Math.random()*teams[b].length);
+        const before = cost(teams[a])+cost(teams[b]); [teams[a][i],teams[b][j]] = [teams[b][j],teams[a][i]];
+        if (cost(teams[a])+cost(teams[b]) > before) [teams[a][i],teams[b][j]] = [teams[b][j],teams[a][i]]; }
+      const c = teams.reduce((x,t)=>x+cost(t),0); if (c<bc){ bc=c; best=teams; } if (bc===0) break; }
+    while (s.equipes.length < k) s.equipes.push(newEq(s));
+    s.equipes.forEach((q,i) => q.eleves = best[i] || []);
+    s.equipes = s.equipes.filter((q,i) => i<k || q.taches.length || q.materiels.length || q.tapis.length || q.obs);
+  } else {
+    const placed = new Set(s.equipes.flatMap(q=>q.eleves));
+    for (const id of shuffle(elevesOf(s.classeId).filter(e=>!abs.has(e.id)&&!placed.has(e.id)).map(e=>e.id))){
+      let tgt=null, tc=Infinity;
+      for (const q of s.equipes){ if (q.eleves.length>=size) continue; const c = q.eleves.reduce((x,o)=>x+w(id,o),0); if (c<tc){ tc=c; tgt=q; } }
+      if (!tgt){ tgt = newEq(s); s.equipes.push(tgt); }
+      tgt.eleves.push(id); }
+  }
+  toast('Équipes formées');
+}
+
+/* ─────────────── Vue Élèves ─────────────── */
+function vEleves(m){
+  const c = curClasse(); if (!c) return needClasse(m);
+  const els = elevesOf(c.id); const pm = pairMap(c.id, null); const nSes = seancesOf(c.id).length;
+  let np = {prenom:'',nom:''};
+  m.append(h('div',{class:'bar'}, h('h2',null,c.nom+' — '+els.length+' élèves'), h('span',{class:'sp'}),
+    h('input',{type:'text',placeholder:'Prénom',oninput:e=>np.prenom=e.target.value}),
+    h('input',{type:'text',placeholder:'Nom',oninput:e=>np.nom=e.target.value}),
+    h('button',{class:'pri',onclick:()=>{ if(!np.prenom.trim()) return toast('Prénom manquant'); commit(()=>D.eleves.push({id:uid(),prenom:np.prenom.trim(),nom:np.nom.trim(),classeId:c.id,remarque:''})); }},'+ Élève')));
+  if (!els.length){ m.append(h('div',{class:'empty card'}, h('p',null,'Aucun élève. Ajoutez-les ci-dessus, collez une liste dans Données, ou importez depuis PlanClasse.'))); return; }
+  m.append(h('div',{class:'grid'}, els.map(e => {
+    const partners = new Set(); for (const k of pm.keys()){ const [a,b]=k.split('|'); if (a===e.id) partners.add(b); if (b===e.id) partners.add(a); }
+    const ts = tasksOfEleve(e.id); const nS = new Set(ts.map(x=>x.s.id)); const pres = D.seances.filter(s=>s.classeId===c.id && s.equipes.some(q=>q.eleves.includes(e.id))).length;
+    const absN = D.seances.filter(s=>s.classeId===c.id && s.absents.includes(e.id)).length;
+    const acq = D.lib.etapes.filter(st=>progOf(e.id,st.id)==='acquis').length;
+    return h('div',{class:'card it',style:{cursor:'pointer'},onclick:()=>ficheEleve(e)},
+      h('div',{class:'row'}, h('span',{class:'av',style:{background:`hsl(${hue(e.id)} 45% 45%)`,width:'32px',height:'32px',fontSize:'12px'}},initials(e)), h('h3',null,full(e))),
+      h('table',{class:'kv'}, h('tbody',null,
+        h('tr',null,h('td',null,'Séances'),h('td',null,pres+' / '+nSes+(absN?' ('+absN+' abs.)':''))),
+        h('tr',null,h('td',null,'Partenaires'),h('td',null,partners.size+' / '+(els.length-1))),
+        h('tr',null,h('td',null,'Tâches réussies'),h('td',null,ts.filter(x=>x.t.statut==='reussi').length+' / '+ts.length)),
+        D.lib.etapes.length ? h('tr',null,h('td',null,'Progression'),h('td',null,acq+' / '+D.lib.etapes.length+' étapes')) : null)),
+      e.remarque ? h('p',null,e.remarque) : null);
+  })));
+}
+function ficheEleve(e){
+  const pm = pairMap(e.classeId, null); const parts = [];
+  for (const [k,v] of pm){ const [a,b]=k.split('|'); const o = a===e.id ? b : b===e.id ? a : null; if (o) parts.push({o, n:v.length, last:v.map(x=>x.s.date).sort().pop()}); }
+  parts.sort((x,y)=>y.n-x.n);
+  const never = elevesOf(e.classeId).filter(x=>x.id!==e.id && !parts.some(p=>p.o===x.id));
+  const f = {prenom:e.prenom, nom:e.nom, remarque:e.remarque||'', classeId:e.classeId};
+  const hist = seancesOf(e.classeId).reverse().map(s => {
+    const q = s.equipes.find(q=>q.eleves.includes(e.id));
+    if (!q) return s.absents.includes(e.id) ? h('div',{class:'eqline muted'}, fmtDate(s.date)+' : absent·e') : null;
+    return h('div',{class:'eqline'}, h('b',null,fmtDate(s.date)), ' — '+q.nom+' avec '+(q.eleves.filter(x=>x!==e.id).map(x=>short(eleve(x))).join(', ')||'personne')+' : ',
+      q.taches.map(t=>h('span',{class:'tag',style:{background:ST[t.statut].c,color:'#fff'}}, taskTitle(t))));
+  });
+  const body = h('div',null,
+    h('div',{class:'row'}, h('input',{type:'text',value:f.prenom,oninput:x=>f.prenom=x.target.value}), h('input',{type:'text',value:f.nom,oninput:x=>f.nom=x.target.value}),
+      h('select',{value:f.classeId,onchange:x=>f.classeId=x.target.value}, D.classes.map(c=>h('option',{value:c.id},c.nom)))),
+    h('div',{class:'fld'}, h('span',null,'Remarque'), h('textarea',{rows:2,value:f.remarque,oninput:x=>f.remarque=x.target.value})),
+    h('div',{class:'sub'},'A travaillé avec'),
+    h('div',null, parts.length ? parts.map(p=>h('span',{class:'tag'}, short(eleve(p.o))+' ×'+p.n)) : h('span',{class:'muted'},'Personne pour l\'instant')),
+    never.length ? [h('div',{class:'sub'},'Jamais ensemble'), h('div',null, never.map(x=>h('span',{class:'tag',style:{background:'#F1EFE9',color:'#6B675C'}},short(x))))] : null,
+    D.lib.etapes.length ? [h('div',{class:'sub'},'Progression'), h('div',null, D.lib.etapes.map((st,i)=>{ const p=PST[progOf(e.id,st.id)]; return h('span',{class:'tag',style:{background:p.c,color:p.t}},(i+1)+'. '+st.titre); }))] : null,
+    h('div',{class:'sub'},'Séances'), hist.some(Boolean) ? hist : h('div',{class:'muted'},'Aucune séance'));
+  modal(full(e), body, [
+    {l:'🗑 Supprimer l\'élève',cls:'danger l',fn:()=>{ confirmBox('Supprimer '+full(e)+' et le retirer de toutes les séances ?',()=>commit(()=>{
+      D.eleves = D.eleves.filter(x=>x!==e); delete D.prog[e.id];
+      for (const s of D.seances){ s.absents = s.absents.filter(x=>x!==e.id); for (const q of s.equipes) q.eleves = q.eleves.filter(x=>x!==e.id); } })); }},
+    {l:'Annuler'},
+    {l:'Enregistrer',cls:'pri',fn:()=>commit(()=>Object.assign(e,{prenom:f.prenom.trim()||e.prenom,nom:f.nom.trim(),remarque:f.remarque,classeId:f.classeId}))}]);
+}
+
+/* ─────────────── Vue Historique ─────────────── */
+function vHistorique(m){
+  const c = curClasse(); if (!c) return needClasse(m);
+  const els = elevesOf(c.id); const pm = pairMap(c.id, null); const ses = seancesOf(c.id).reverse();
+  let max = 1; for (const v of pm.values()) max = Math.max(max, v.length);
+  m.append(h('div',{class:'sec'}, h('h2',null,'Qui a travaillé avec qui'),
+    h('p',{class:'muted'},'Nombre de séances passées dans la même équipe. Cliquez une case pour le détail.'),
+    els.length > 1 ? h('div',{class:'wrap card',style:{display:'inline-block'}}, h('table',{class:'mx'},
+      h('thead',null, h('tr',null, h('th',{class:'r'}), els.map(e=>h('th',{class:'v',title:full(e)},short(e))))),
+      h('tbody',null, els.map(a => h('tr',null, h('th',{class:'r',title:full(a)},short(a)), els.map(b => {
+        if (a===b) return h('td',{class:'self'});
+        const v = pm.get(pairKey(a.id,b.id))||[]; const n = v.length;
+        return h('td',{class:'c',style:n?{background:`rgba(14,116,144,${0.15+0.75*n/max})`,color:n/max>.5?'#fff':'#19170E'}:{},
+          title:short(a)+' + '+short(b)+' : '+n, onclick:()=>modal(full(a)+' + '+full(b),
+            n ? h('div',null, v.map(({s,q})=>h('div',{class:'eqline'}, h('b',null,fmtDate(s.date)),' — '+q.nom+(s.titre?' ('+s.titre+')':'')+' : '+(q.taches.map(taskTitle).join(', ')||'—')))) : h('p',{class:'muted'},'Jamais dans la même équipe.'))}, n||'');
+      })))))) : h('p',{class:'muted'},'Pas assez d\'élèves.')));
+  m.append(h('div',{class:'sec'}, h('h2',null,'Séances ('+ses.length+')'),
+    h('div',{class:'tl'}, ses.length ? ses.map(s => h('div',{class:'card'},
+      h('div',{class:'row'}, h('h3',null,fmtDate(s.date)+(s.titre?' — '+s.titre:'')), h('span',{class:'sp',style:{flex:1}}),
+        h('button',{onclick:()=>{U.view='seance';U.seanceId=s.id;render();}},'Ouvrir')),
+      s.notes ? h('p',{class:'muted'},s.notes) : null,
+      s.equipes.map(q => h('div',{class:'eqline'}, h('b',null,q.nom+' : '), q.eleves.map(id=>short(eleve(id))).join(', ')||'—', ' ',
+        q.taches.map(t=>h('span',{class:'tag',style:{background:ST[t.statut].c,color:'#fff'}},taskTitle(t))),
+        q.materiels.concat(q.tapis).length ? h('span',{class:'muted'},' · '+[...q.materiels.map(id=>libTitle('materiels',id)),...q.tapis.map(id=>libTitle('tapis',id))].join(', ')) : null,
+        q.obs ? h('div',{class:'muted',style:{fontSize:'12px'}},'📝 '+q.obs) : null)),
+      s.absents.length ? h('div',{class:'eqline muted'},'Absents : '+s.absents.map(id=>short(eleve(id))).join(', ')) : null))
+    : h('p',{class:'muted'},'Aucune séance.'))));
+}
+
+/* ─────────────── Vue Progression ─────────────── */
+function vProgression(m){
+  const c = curClasse(); if (!c) return needClasse(m);
+  const steps = D.lib.etapes; const els = elevesOf(c.id);
+  m.append(h('div',{class:'bar'}, h('h2',null,'Progression — '+c.nom), h('span',{class:'sp'}),
+    h('button',{onclick:()=>{U.view='biblio';U.libType='etapes';render();}},'✏️ Modifier les étapes')));
+  if (!steps.length){ m.append(h('div',{class:'empty card'}, h('p',null,'Aucune étape de progression. Créez-les dans Bibliothèque → Progression, puis reliez-y vos défis et exercices.'))); return; }
+  m.append(h('p',{class:'muted'},'Statut calculé à partir des tâches réussies liées à chaque étape. Cliquez une case pour le forcer (cadre foncé = choix manuel) ; un dernier clic revient au calcul automatique.'));
+  const legend = h('div',{class:'row'}, Object.values(PST).map(p=>h('span',{class:'tag',style:{background:p.c,color:p.t}},p.l)));
+  m.append(legend);
+  const cyc = ['acquis','encours','non', null];
+  m.append(h('div',{class:'wrap card'}, h('table',{class:'prog'},
+    h('thead',null, h('tr',null, h('th',{class:'r'},'Élève'), steps.map((st,i)=>h('th',{title:st.description||''},(i+1)+'. '+st.titre)), h('th',null,'Acquis'))),
+    h('tbody',null, els.map(e => { const man = D.prog[e.id]||{}; let n=0;
+      const cells = steps.map(st => { const v = progOf(e.id,st.id); if (v==='acquis') n++; const p = PST[v];
+        return h('td',null, h('button',{class:'pc'+(man[st.id]?' man':''),style:{background:p.c,color:p.t},onclick:()=>commit(()=>{
+          const cur = man[st.id]||null; const nx = cyc[(cyc.indexOf(cur)+1)%cyc.length];
+          D.prog[e.id] = D.prog[e.id]||{}; if (nx) D.prog[e.id][st.id]=nx; else delete D.prog[e.id][st.id]; })}, p.l)); });
+      return h('tr',null, h('th',{class:'r'}, h('a',{href:'#',onclick:ev=>{ev.preventDefault();ficheEleve(e);}},full(e))), cells, h('td',{style:{textAlign:'center',fontWeight:600}}, n+'/'+steps.length));
+    })))));
+}
+
+/* ─────────────── Vue Bibliothèque ─────────────── */
+function vBiblio(m){
+  const t = U.libType in TYPES ? U.libType : 'defis'; const items = D.lib[t];
+  m.append(h('div',{class:'bar'}, h('div',{class:'tabs'}, Object.entries(TYPES).map(([k,v])=>h('button',{class:t===k?'on':'',onclick:()=>{U.libType=k;render();}},v.icon+' '+v.label+' ('+D.lib[k].length+')'))),
+    h('span',{class:'sp'}), h('button',{class:'pri',onclick:()=>editItem(t,null)},'+ '+TYPES[t].one)));
+  if (!items.length){ m.append(h('div',{class:'empty card'}, h('p',null,'Aucun élément dans « '+TYPES[t].label+' ».'), h('button',{class:'pri',onclick:()=>editItem(t,null)},'+ Ajouter'))); return; }
+  // usage des défis / exercices
+  const use = {}; for (const s of D.seances) for (const q of s.equipes) for (const x of q.taches) if (x.ref){ const u = use[x.ref.id] = use[x.ref.id]||{n:0,ok:0}; u.n++; if (x.statut==='reussi') u.ok++; }
+  m.append(h('div',{class:'grid'}, items.map((it,i) => h('div',{class:'card it',style:{cursor:'pointer'},onclick:()=>editItem(t,it)},
+    h('div',{class:'row'}, h('h3',{style:{flex:1}}, (t==='etapes'?(i+1)+'. ':TYPES[t].icon+' ')+it.titre),
+      t==='etapes' ? [h('button',{class:'x',title:'Monter',onclick:e=>{e.stopPropagation(); if(i) commit(()=>{const a=D.lib.etapes;[a[i-1],a[i]]=[a[i],a[i-1]];});}},'↑'),
+                      h('button',{class:'x',title:'Descendre',onclick:e=>{e.stopPropagation(); if(i<items.length-1) commit(()=>{const a=D.lib.etapes;[a[i+1],a[i]]=[a[i],a[i+1]];});}},'↓')] : null),
+    it.niveau ? h('div',{style:{color:'#D97706'}},'★'.repeat(it.niveau)) : null,
+    it.domaine ? h('div',{class:'muted'},it.domaine) : null,
+    it.quantite!==undefined && it.quantite!=='' ? h('div',null,'Quantité : '+it.quantite) : null,
+    it.dimensions ? h('div',null,it.dimensions) : null,
+    it.description ? h('p',null,it.description) : null,
+    it.etapeId ? h('span',{class:'tag'},'📈 '+libTitle('etapes',it.etapeId)) : null,
+    ['materiels','tapis','connaissances'].map(k=>(it[k]||[]).map(id=>h('span',{class:'tag'},TYPES[k].icon+' '+libTitle(k,id)))),
+    t==='etapes' ? h('div',{class:'muted',style:{fontSize:'12px',marginTop:'6px'}}, [...D.lib.defis,...D.lib.exercices].filter(x=>x.etapeId===it.id).map(x=>x.titre).join(' · ')||'Aucun défi ni exercice relié') : null,
+    use[it.id] ? h('div',{class:'muted',style:{fontSize:'12px',marginTop:'6px'}},'Donné '+use[it.id].n+' fois · réussi '+use[it.id].ok+' fois') : null))));
+}
+
+/* ─────────────── Vue Données ─────────────── */
+function vDonnees(m){
+  let nc = '';
+  const bulk = {cls: (curClasse()||{}).id||'', txt:''};
+  m.append(
+    h('div',{class:'sec card'}, h('h2',null,'Classes et groupes'),
+      D.classes.map(c => h('div',{class:'row'},
+        h('input',{type:'text',value:c.nom,onchange:e=>commit(()=>c.nom=e.target.value.trim()||c.nom)}),
+        h('span',{class:'muted'}, elevesOf(c.id).length+' élèves · '+seancesOf(c.id).length+' séances'),
+        h('button',{class:'danger',onclick:()=>confirmBox('Supprimer « '+c.nom+' », ses élèves et ses séances ?',()=>commit(()=>{
+          const ids = new Set(elevesOf(c.id).map(e=>e.id)); D.eleves = D.eleves.filter(e=>!ids.has(e.id)); ids.forEach(id=>delete D.prog[id]);
+          D.seances = D.seances.filter(s=>s.classeId!==c.id); D.classes = D.classes.filter(x=>x!==c); }))},'🗑'))),
+      h('div',{class:'row'}, h('input',{type:'text',placeholder:'Nouvelle classe (ex. : 4e B, Club robotique)',oninput:e=>nc=e.target.value}),
+        h('button',{class:'pri',onclick:()=>{ if(!nc.trim()) return; commit(()=>{ const c={id:uid(),nom:nc.trim()}; D.classes.push(c); U.classeId=c.id; }); }},'+ Classe'))),
+    h('div',{class:'sec card'}, h('h2',null,'Ajouter des élèves en liste'),
+      h('p',{class:'muted'},'Un élève par ligne : « Prénom Nom » ou « NOM Prénom » (le nom en majuscules est reconnu). Copier-coller depuis un tableur fonctionne.'),
+      D.classes.length ? [
+        h('div',{class:'row'}, h('span',null,'Classe :'), h('select',{value:bulk.cls,onchange:e=>bulk.cls=e.target.value}, D.classes.map(c=>h('option',{value:c.id},c.nom)))),
+        h('textarea',{rows:5,placeholder:'Alix Martin\nDURAND Bilal\n…',oninput:e=>bulk.txt=e.target.value}),
+        h('div',{class:'row'}, h('button',{class:'pri',onclick:()=>{
+          const ex = new Set(elevesOf(bulk.cls).map(e=>norm(e.prenom+' '+e.nom)));
+          const add = bulk.txt.split(/\r?\n/).map(splitName).filter(Boolean).filter(n=>!ex.has(norm(n.prenom+' '+n.nom)));
+          if (!add.length) return toast('Rien de nouveau à ajouter');
+          commit(()=>add.forEach(n=>D.eleves.push({id:uid(),...n,classeId:bulk.cls,remarque:''}))); toast(add.length+' élève(s) ajouté(s)'); }},'Ajouter'))]
+      : h('p',null,'Créez d\'abord une classe.')),
+    h('div',{class:'sec card'}, h('h2',null,'Importer depuis PlanClasse'),
+      h('p',{class:'muted'},'Dans PlanClasse, faites une sauvegarde (fichier .json), puis choisissez-la ici. Seuls les classes et les noms des élèves sont repris. Un nouvel import complète sans créer de doublons.'),
+      h('input',{type:'file',accept:'.json,application/json',onchange:e=>readFile(e.target.files[0], importPlanClasse)})),
+    h('div',{class:'sec card'}, h('h2',null,'Sauvegarde'),
+      h('p',{class:'muted'},'Les données restent dans ce navigateur, sur cet appareil : rien n\'est envoyé sur GitHub. Exportez régulièrement une sauvegarde (par exemple dans votre Dropbox) ; elle sert aussi à passer d\'un ordinateur à l\'autre.'),
+      h('div',{class:'row'},
+        h('button',{class:'pri',onclick:()=>download('robotique-sauvegarde-'+today()+'.json', JSON.stringify(D,null,1))},'⬇ Exporter la sauvegarde'),
+        h('span',{class:'row',style:{margin:0}}, h('button',{onclick:e=>e.currentTarget.nextSibling.click()},'⬆ Restaurer une sauvegarde…'),
+          h('input',{type:'file',accept:'.json',style:{display:'none'},onchange:e=>readFile(e.target.files[0], restore)})))),
+    h('div',{class:'sec card'}, h('h2',null,'Exemple et remise à zéro'),
+      h('div',{class:'row'}, h('button',{onclick:loadExample},'Ajouter les données d\'exemple'),
+        h('button',{onclick:()=>confirmBox('Ajouter la bibliothèque de départ (matériel, tapis, défis, progression) sans élèves ?',()=>commit(()=>mergeLib(exampleData().lib)),'Ajouter')},'Ajouter seulement la bibliothèque d\'exemple'),
+        h('span',{class:'sp',style:{flex:1}}),
+        h('button',{class:'danger',onclick:()=>confirmBox('Tout effacer sur cet appareil ? Pensez à exporter avant.',()=>commit(()=>{ D = emptyData(); U.classeId=null; U.seanceId=null; }),'Tout effacer')},'🗑 Tout effacer'))));
+}
+function readFile(file, fn){
+  if (!file) return; const r = new FileReader();
+  r.onload = () => { let o; try { o = JSON.parse(r.result); } catch(e){ return toast('Fichier illisible (JSON attendu)'); } fn(o); };
+  r.readAsText(file);
+}
+function restore(o){
+  if (!o || !Array.isArray(o.classes) || !o.lib) return toast('Ce fichier n\'est pas une sauvegarde Robotique');
+  confirmBox('Remplacer toutes les données de cet appareil par cette sauvegarde ?', ()=>commit(()=>{ D = normalize(o); U.classeId=null; U.seanceId=null; }), 'Remplacer');
+}
+function findPC(o, d){ if (!o || typeof o!=='object' || d>5) return null;
+  if (o.cl && typeof o.cl==='object' && !Array.isArray(o.cl)) return o;
+  for (const v of Object.values(o)){ const r = findPC(v, d+1); if (r) return r; } return null; }
+function pcClasses(S){
+  const sd = S.studentData||{}; const out = [];
+  for (const [k,c] of Object.entries(S.cl)){
+    if (!c || !Array.isArray(c.students)) continue; const list = []; const seen = new Set();
+    for (const st of c.students){
+      if (st==null) continue;
+      const id = typeof st==='string' ? st : (st.uid||st.id||null);
+      const d = (id && sd[id]) || (typeof st==='object' ? st : {});
+      let pr = d.prenoms ?? d.prenom ?? '', no = d.noms ?? d.nom ?? '';
+      if (Array.isArray(pr)) pr = pr.join(' '); if (Array.isArray(no)) no = no.join(' ');
+      if (!pr && !no && (d.name||st.name)){ const n = splitName(d.name||st.name); if (n){ pr=n.prenom; no=n.nom; } }
+      pr = String(pr).trim(); no = String(no).trim(); if (!pr && !no) continue;
+      const key = id || norm(pr+' '+no); if (seen.has(key)) continue; seen.add(key);
+      list.push({pcUid:id, prenom:pr||no, nom:pr?no:''});
+    }
+    if (list.length) out.push({code:k, nom:(c.nomComplet||k), eleves:list});
+  }
+  return out.sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+}
+function importPlanClasse(o){
+  const S = findPC(o, 0); if (!S) return toast('Aucune classe PlanClasse trouvée dans ce fichier');
+  const cls = pcClasses(S); if (!cls.length) return toast('Aucun élève trouvé dans ce fichier');
+  const pick = new Set();
+  const body = h('div',null, h('p',{class:'muted'},'Cochez les classes à importer :'),
+    cls.map(c => h('label',{class:'row'}, h('input',{type:'checkbox',onchange:e=>e.target.checked?pick.add(c.code):pick.delete(c.code)}), h('b',null,c.nom), h('span',{class:'muted'},c.eleves.length+' élèves'))));
+  modal('Importer depuis PlanClasse', body, [{l:'Annuler'},{l:'Importer',cls:'pri',fn:()=>{
+    if (!pick.size){ toast('Aucune classe cochée'); return false; }
+    let nE = 0, nC = 0;
+    commit(()=>{ for (const c of cls.filter(x=>pick.has(x.code))){
+      let cl = D.classes.find(x=>x.pcCode===c.code) || D.classes.find(x=>norm(x.nom)===norm(c.nom));
+      if (!cl){ cl = {id:uid(), nom:c.nom, pcCode:c.code}; D.classes.push(cl); nC++; } else cl.pcCode = c.code;
+      const ex = elevesOf(cl.id);
+      for (const e of c.eleves){
+        const f = ex.find(x=>(e.pcUid && x.pcUid===e.pcUid) || norm(x.prenom+' '+x.nom)===norm(e.prenom+' '+e.nom));
+        if (f){ if (e.pcUid) f.pcUid = e.pcUid; continue; }
+        D.eleves.push({id:uid(), prenom:e.prenom, nom:e.nom, classeId:cl.id, pcUid:e.pcUid, remarque:''}); nE++; }
+      U.classeId = cl.id; } });
+    toast(nC+' classe(s) créée(s), '+nE+' élève(s) ajouté(s)'); }}]);
+}
+
+/* ─────────────── Exemple ─────────────── */
+function exampleData(){
+  const id = {}; const I = k => id[k] = id[k] || uid();
+  const lib = {
+    connaissances: [
+      {id:I('c1'),titre:'Capteurs et actionneurs',domaine:'Systèmes',description:'Distinguer ce qui perçoit (capteur) de ce qui agit (moteur, LED, haut-parleur).'},
+      {id:I('c2'),titre:'Séquence d\'instructions',domaine:'Algorithmique',description:'Les instructions s\'exécutent dans l\'ordre.'},
+      {id:I('c3'),titre:'Boucles',domaine:'Algorithmique',description:'Répéter un bloc un nombre de fois ou indéfiniment.'},
+      {id:I('c4'),titre:'Conditions (si… alors… sinon)',domaine:'Algorithmique',description:''},
+      {id:I('c5'),titre:'Événements',domaine:'Programmation',description:'Déclencher une action quand un capteur change.'},
+      {id:I('c6'),titre:'Se repérer sur un quadrillage',domaine:'Espace',description:''}],
+    materiels: [
+      {id:I('m1'),titre:'Thymio',quantite:6,description:'Vérifier la charge avant la séance.'},
+      {id:I('m2'),titre:'Blue-Bot',quantite:6,description:''},
+      {id:I('m3'),titre:'mBot',quantite:4,description:''},
+      {id:I('m4'),titre:'Lego Spike Prime',quantite:3,description:''},
+      {id:I('m5'),titre:'Tablette',quantite:8,description:''},
+      {id:I('m6'),titre:'Câble USB',quantite:10,description:''}],
+    tapis: [
+      {id:I('t1'),titre:'Tapis quadrillé 15 cm',dimensions:'6 × 6 cases',description:'Pour Blue-Bot.'},
+      {id:I('t2'),titre:'Piste noire (suivi de ligne)',dimensions:'A0',description:'Pour Thymio et mBot.'},
+      {id:I('t3'),titre:'Tapis ville',dimensions:'120 × 90 cm',description:'Rues, maisons, livraisons.'}],
+    etapes: [
+      {id:I('e1'),titre:'Découvrir le robot',description:'Identifier capteurs et actionneurs, utiliser les modes intégrés.',connaissances:[I('c1')]},
+      {id:I('e2'),titre:'Programmer une séquence',description:'Écrire et tester un trajet simple.',connaissances:[I('c2'),I('c6')]},
+      {id:I('e3'),titre:'Utiliser une boucle',description:'Raccourcir un programme grâce à la répétition.',connaissances:[I('c3')]},
+      {id:I('e4'),titre:'Réagir à un capteur',description:'Programmer une réaction à un événement.',connaissances:[I('c4'),I('c5'),I('c1')]},
+      {id:I('e5'),titre:'Combiner boucles et conditions',description:'Résoudre un défi complexe en autonomie.',connaissances:[I('c3'),I('c4')]}],
+    exercices: [
+      {id:I('x1'),titre:'Les modes de Thymio',niveau:1,etapeId:I('e1'),description:'Tester chaque couleur de mode et noter ce que fait le robot.',materiels:[I('m1')],tapis:[],connaissances:[I('c1')]},
+      {id:I('x2'),titre:'Écrire l\'algorithme d\'un trajet',niveau:1,etapeId:I('e2'),description:'Sur papier, écrire les flèches pour aller de A à B.',materiels:[],tapis:[I('t1')],connaissances:[I('c2'),I('c6')]},
+      {id:I('x3'),titre:'Compléter un programme avec une boucle',niveau:2,etapeId:I('e3'),description:'',materiels:[I('m5')],tapis:[],connaissances:[I('c3')]}],
+    defis: [
+      {id:I('d1'),titre:'Aller-retour',niveau:1,etapeId:I('e2'),description:'Le Blue-Bot va jusqu\'à la case étoile et revient.',materiels:[I('m2')],tapis:[I('t1')],connaissances:[I('c2')]},
+      {id:I('d2'),titre:'Le carré parfait',niveau:2,etapeId:I('e3'),description:'Faire dessiner un carré au robot avec le programme le plus court possible.',materiels:[I('m1'),I('m5')],tapis:[],connaissances:[I('c3')]},
+      {id:I('d3'),titre:'Suivi de ligne',niveau:2,etapeId:I('e4'),description:'Le robot suit la piste noire sans en sortir.',materiels:[I('m1')],tapis:[I('t2')],connaissances:[I('c1'),I('c4')]},
+      {id:I('d4'),titre:'Évite l\'obstacle',niveau:2,etapeId:I('e4'),description:'Le robot avance et contourne un obstacle posé sur sa route.',materiels:[I('m3')],tapis:[],connaissances:[I('c5')]},
+      {id:I('d5'),titre:'Livraison en ville',niveau:3,etapeId:I('e5'),description:'Livrer trois maisons dans l\'ordre, en s\'arrêtant à chaque feu rouge.',materiels:[I('m1')],tapis:[I('t3')],connaissances:[I('c3'),I('c4')]}]};
+  return {lib, id};
+}
+function mergeLib(lib){ for (const k of Object.keys(lib)) for (const it of lib[k]) if (!D.lib[k].some(x=>norm(x.titre)===norm(it.titre))) D.lib[k].push(it); }
+function loadExample(){
+  commit(()=>{
+    const {lib, id} = exampleData(); mergeLib(lib);
+    // id réel de chaque élément d'exemple (un élément de même titre déjà présent est réutilisé)
+    const real = {}; for (const k of Object.keys(lib)) for (const it of lib[k]){ const f = D.lib[k].find(x=>norm(x.titre)===norm(it.titre)); if (f) real[it.id] = f.id; }
+    const ok = k => real[id[k]] || null;
+    const c = {id:uid(), nom:'Club robotique (exemple)'}; D.classes.push(c);
+    const names = ['Alix Martin','Bilal Durand','Chloé Petit','Dylan Moreau','Emma Leroy','Farid Roux','Gabin Fournier','Hana Girard','Inès Bonnet','Jules Mercier','Kenza Lambert','Léo Fontaine'];
+    const els = names.map(n => { const [p,...r] = n.split(' '); const e = {id:uid(),prenom:p,nom:r.join(' '),classeId:c.id,remarque:''}; D.eleves.push(e); return e.id; });
+    const d1 = new Date(); d1.setDate(d1.getDate()-14); const d2 = new Date(); d2.setDate(d2.getDate()-7);
+    const iso = d => d.toISOString().slice(0,10);
+    const T = (k, st) => ok(k) ? {id:uid(), ref:{t:k[0]==='d'?'defis':'exercices', id:ok(k)}, titre:'', statut:st, note:''} : null;
+    const eq = (n, ids, ts, mats, tap) => ({id:uid(), nom:n, eleves:ids, taches:ts.filter(Boolean), materiels:mats.map(ok).filter(Boolean), tapis:tap.map(ok).filter(Boolean), obs:''});
+    D.seances.push({id:uid(), classeId:c.id, date:iso(d1), titre:'Découverte', notes:'', reserve:[], absents:[],
+      equipes:[eq('Équipe 1',els.slice(0,3),[T('x1','reussi'),T('d1','reussi')],['m1'],['t1']), eq('Équipe 2',els.slice(3,6),[T('x1','reussi'),T('d1','encours')],['m2'],['t1']),
+               eq('Équipe 3',els.slice(6,9),[T('x1','reussi')],['m1'],[]), eq('Équipe 4',els.slice(9,12),[T('x1','encours')],['m1'],[])]});
+    const s2 = {id:uid(), classeId:c.id, date:iso(d2), titre:'Boucles', notes:'', reserve:[T('d3','afaire')].filter(Boolean), absents:[els[11]],
+      equipes:[eq('Équipe 1',[els[0],els[3],els[6]],[T('d2','reussi')],['m1','m5'],[]), eq('Équipe 2',[els[1],els[4],els[9]],[T('d2','encours'),T('x3','reussi')],['m1'],[]),
+               eq('Équipe 3',[els[2],els[7],els[10]],[T('d2','reprendre')],['m1'],[]), eq('Équipe 4',[els[5],els[8]],[T('x2','reussi'),T('d1','reussi')],['m2'],['t1'])]};
+    s2.equipes[1].obs = 'Bonne entraide, à valoriser.';
+    D.seances.push(s2); U.classeId = c.id; U.seanceId = s2.id; U.view = 'seance';
+  });
+  toast('Exemple chargé');
+}
+
+/* ─────────────── Démarrage ─────────────── */
+render();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
