@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A4%96%3C/text%3E%3C/svg%3E">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&family=Bangers&display=swap');
 :root{--bg:#F5F3EE;--sur:#FFF;--brd:#D2CEC2;--tx:#19170E;--mut:#6B675C;--acc:#0E7490;--acc-l:#DDF1F6;--red:#B91C1C;--red-l:#FBE2E0;--sh:0 2px 8px rgba(0,0,0,.07);--r:10px}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
@@ -183,6 +183,100 @@ button.big{font-size:17px;padding:10px 18px}
 .choices span.d{color:var(--mut);font-size:14px}
 .dbx{font-size:12px;border:1px solid var(--brd);border-radius:14px;padding:3px 9px;background:var(--sur);cursor:pointer;white-space:nowrap}
 @media (max-width:700px){.choices{grid-template-columns:1fr}}
+/* ═══════ Paramètres / thèmes ═══════ */
+.thopts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.thopt{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px;text-align:left;border-radius:14px}
+.thopt.on{outline:3px solid var(--acc);outline-offset:2px}
+.thopt .sw{display:flex;gap:4px}.thopt .sw i{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.15);display:block}
+.thopt b{font-size:16px}.thopt small{color:var(--mut);font-size:12px}
+@media (max-width:600px){.thopts{grid-template-columns:1fr}}
+
+/* ═══════ Thème Bonbon ═══════ */
+body.th-bonbon{--bg:#FDF2FF;--sur:#FFFFFF;--brd:#E9D5FF;--tx:#2E1065;--mut:#6B21A8;--acc:#7C3AED;--acc-l:#EDE9FE;--r:20px;font-family:Nunito,'DM Sans',sans-serif;font-weight:600}
+.th-bonbon h1,.th-bonbon h2,.th-bonbon h3,.th-bonbon .eqname,.th-bonbon .colh b,.th-bonbon .choices b,.th-bonbon .step .body b{font-family:Fredoka,sans-serif;font-weight:600}
+.th-bonbon header{background:#7C3AED;border:none;border-radius:0 0 24px 24px;color:#fff}
+.th-bonbon header h1{color:#FACC15}
+.th-bonbon header .ver{color:#DDD6FE}
+.th-bonbon header button,.th-bonbon header select,.th-bonbon header .livebadge,.th-bonbon header .dbx{color:var(--tx)}
+.th-bonbon nav button{color:#EDE9FE;border-radius:999px;font-weight:700}
+.th-bonbon nav button.on{background:#FACC15;color:#3B0764}
+.th-bonbon button{border-radius:14px;border-width:2px;border-color:#DDD6FE;font-weight:700}
+.th-bonbon button.pri{background:#EC4899;border-color:#EC4899}
+.th-bonbon button.x{border:none}
+.th-bonbon input[type=text],.th-bonbon input[type=date],.th-bonbon input[type=number],.th-bonbon select,.th-bonbon textarea{border-radius:12px;border-width:2px}
+.th-bonbon .col{background:#fff;border:none;border-radius:22px;box-shadow:0 5px 0 color-mix(in srgb,var(--tc,#A78BFA) 35%,transparent),0 2px 10px rgba(76,29,149,.08);overflow:hidden}
+.th-bonbon .col.res,.th-bonbon .col.pal{background:#EDE9FE;box-shadow:none}
+.th-bonbon .col[style*="--tc"]>.colh{background:var(--tc);margin:-8px -8px 2px;padding:9px 12px}
+.th-bonbon .col[style*="--tc"]>.colh .eqname,.th-bonbon .col[style*="--tc"]>.colh b{color:#fff!important;font-size:18px}
+.th-bonbon .chip{background:#F5F3FF;border:none;border-radius:999px;font-weight:700}
+.th-bonbon .task{background:#F5F3FF;border:none!important;border-radius:14px;font-weight:700}
+.th-bonbon .task.alert{background:#EDE9FE;outline:3px dashed #8B5CF6}
+.th-bonbon .stbtn{border-radius:999px}
+.th-bonbon .lib{background:#F5F3FF;border:none;border-radius:14px}
+.th-bonbon .card{border:none;border-radius:22px;box-shadow:0 4px 0 #E9D5FF}
+.th-bonbon .modal{border-radius:26px}
+.th-bonbon .tabs button.on{background:#EC4899;border-color:#EC4899}
+.th-bonbon .hint{border:2px dashed #DDD6FE;border-radius:14px}
+.th-bonbon .step .body{border:3px solid #EDE9FE;border-radius:20px}
+.th-bonbon .step.cur .body{border-color:#FACC15;box-shadow:0 6px 0 #FDE68A}
+.th-bonbon .step.cur .num span{background:#FACC15;color:#3B0764;border-color:#FACC15;box-shadow:0 0 0 6px #FEF9C3}
+.th-bonbon .step.reussi .num span{background:#10B981;border-color:#10B981}
+.th-bonbon .step .num::after{width:6px;border-radius:3px;background:#DDD6FE}
+.th-bonbon .step.reussi .num::after{background:#10B981}
+.th-bonbon .choices button{border-radius:26px;border:3px solid #E9D5FF}
+.th-bonbon .addcol{border-radius:22px}
+.th-bonbon .aide{background:#FEF9C3;border-radius:14px}
+.th-bonbon .consigne{background:#F5F3FF;border-radius:14px}
+.th-bonbon button.big{border-radius:20px;box-shadow:0 5px 0 #9D174D}
+.th-bonbon .codebig{font-family:Fredoka,sans-serif;color:#DB2777}
+
+/* ═══════ Thème Bande dessinée ═══════ */
+body.th-bd{--bg:#FFF6DA;--sur:#FFFFFF;--brd:#111111;--tx:#111111;--mut:#44403C;--acc:#2563EB;--acc-l:#DBEAFE;--r:12px;font-family:Nunito,'DM Sans',sans-serif;font-weight:700;background-image:radial-gradient(#F2DFA6 1.5px,transparent 1.5px);background-size:14px 14px}
+.th-bd h1,.th-bd h2,.th-bd h3,.th-bd .eqname,.th-bd .colh b,.th-bd .choices b,.th-bd .codebig{font-family:Bangers,cursive;font-weight:400;letter-spacing:.05em}
+.th-bd h2{font-size:26px}
+.th-bd header{background:#2563EB;border-bottom:4px solid #111;color:#fff}
+.th-bd header h1{color:#FDE047;text-shadow:3px 3px 0 #111;font-size:30px}
+.th-bd header .ver{color:#DBEAFE}
+.th-bd header button,.th-bd header select,.th-bd header .livebadge,.th-bd header .dbx{color:var(--tx)}
+.th-bd nav button{color:#fff;font-weight:900;border:none;box-shadow:none}
+.th-bd nav button.on{background:#FDE047;color:#111;border:3px solid #111;box-shadow:3px 3px 0 #111;transform:rotate(-2deg)}
+.th-bd button{border:3px solid #111;border-radius:10px;box-shadow:3px 3px 0 #111;font-weight:800}
+.th-bd button:hover{border-color:#111;transform:translate(-1px,-1px)}
+.th-bd button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #111}
+.th-bd button.x,.th-bd .stbtn,.th-bd .mat button,.th-bd .stars .star{box-shadow:none;border:none}
+.th-bd button.pri{background:#EF4444;color:#fff}
+.th-bd button.ghost{box-shadow:none;border:2px dashed #111}
+.th-bd .pick{border-width:2px;box-shadow:none}
+.th-bd input[type=text],.th-bd input[type=date],.th-bd input[type=number],.th-bd input[type=password],.th-bd select,.th-bd textarea{border:2px solid #111;border-radius:8px}
+.th-bd .col{background:#fff;border:3px solid #111;border-radius:12px;box-shadow:5px 5px 0 #111;overflow:hidden}
+.th-bd .col.res,.th-bd .col.pal{background:#FDE047}
+.th-bd .col[style*="--tc"]>.colh{background:var(--tc);margin:-8px -8px 2px;padding:6px 10px;border-bottom:3px solid #111}
+.th-bd .col[style*="--tc"]>.colh .eqname,.th-bd .col[style*="--tc"]>.colh b{color:#fff!important;font-size:23px;text-shadow:2px 2px 0 #111}
+.th-bd .chip{border:2px solid #111;border-radius:999px;font-weight:800}
+.th-bd .av{border:2px solid #111}
+.th-bd .task{border:2px solid #111!important;border-radius:8px;background:#FFFBEB;font-weight:800}
+.th-bd .task.alert{background:#EDE9FE;transform:rotate(-1deg);box-shadow:3px 3px 0 #111;animation:none}
+.th-bd .stbtn{border:2px solid #111;border-radius:6px}
+.th-bd .lib{border:2px solid #111;background:#fff}
+.th-bd .card{border:3px solid #111;box-shadow:5px 5px 0 #111}
+.th-bd .modal{border:4px solid #111;box-shadow:8px 8px 0 #111}
+.th-bd .mh{border-bottom:3px solid #111}.th-bd .mf{border-top:3px solid #111}
+.th-bd .tabs button{box-shadow:none;border-width:2px}
+.th-bd .tabs button.on{background:#FDE047;color:#111;border-color:#111}
+.th-bd .tag,.th-bd .warn,.th-bd .livebadge,.th-bd .dbx,.th-bd .aide,.th-bd .consigne,.th-bd .bravo{border:2px solid #111}
+.th-bd .hint{border:2px dashed #111}
+.th-bd .sub{color:#111;font-weight:900}
+.th-bd .codebig{color:#2563EB;text-shadow:3px 3px 0 #111}
+.th-bd .step .body{border:3px solid #111;box-shadow:4px 4px 0 #111}
+.th-bd .step.cur .body{background:#FDE047;transform:rotate(-1deg);box-shadow:6px 6px 0 #111;border-color:#111}
+.th-bd .step .num span{border:3px solid #111;box-shadow:3px 3px 0 #111;font-family:Bangers,cursive;font-size:24px;font-weight:400}
+.th-bd .step.cur .num span{background:#FDE047;color:#111;border-color:#111}
+.th-bd .step.reussi .num span{background:#22C55E;border-color:#111}
+.th-bd .step .num::after{width:0;background:none;border-left:4px dashed #111}
+.th-bd .step.reussi .num::after{border-left-style:solid}
+.th-bd .choices button{border:4px solid #111;box-shadow:8px 8px 0 #111;border-radius:16px}
+.th-bd button.big{background:#22C55E;color:#fff;font-family:Bangers,cursive;font-size:28px;letter-spacing:.05em;text-shadow:2px 2px 0 #111;box-shadow:5px 5px 0 #111}
+.th-bd .mx th,.th-bd .mx td,.th-bd .prog th,.th-bd .prog td{border-color:#111}
 @media (max-width:700px){header h1{font-size:18px}.col{flex-basis:200px}}
 </style>
 </head>
@@ -191,7 +285,7 @@ button.big{font-size:17px;padding:10px 18px}
 <main id="main"></main>
 <script>
 'use strict';
-const APP_VERSION = 'v1.3.0';
+const APP_VERSION = 'v1.4.0';
 const KEY = 'robotique-data-v1', UIKEY = 'robotique-ui-v1';
 
 /* ─────────────── Utilitaires ─────────────── */
@@ -200,7 +294,7 @@ function h(tag, props, ...kids){
   if (props) for (const [k,v] of Object.entries(props)){
     if (v==null || v===false) continue;
     if (k==='class') el.className = v;
-    else if (k==='style' && typeof v==='object') Object.assign(el.style, v);
+    else if (k==='style' && typeof v==='object'){ for (const [sk,sv] of Object.entries(v)) if (sk.startsWith('--')) el.style.setProperty(sk, sv); else el.style[sk] = sv; }
     else if (k==='dataset') Object.assign(el.dataset, v);
     else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
     else if (k==='value') val = v;
@@ -418,6 +512,7 @@ function renderHeader(){
     hd.replaceChildren(h('div',{class:'ph'}, h('h1',null,'🤖 '+(s ? (s.titre || 'Séance du '+fmtDate(s.date)) : 'Robotique')),
       code ? h('span',{class:'join'},'Sur votre machine : '+joinUrl(null)+' · code ', h('b',null,code)) : null,
       h('span',{class:'sp',style:{flex:1}}), code ? liveBadge() : null,
+      h('button',{title:'Paramètres',onclick:settingsModal},'⚙'),
       h('button',{onclick:()=>askPin(()=>{U.mode='';render();})},'⏏ Quitter le mode élève'))); return; }
   hd.replaceChildren(...[
     h('h1',null,'🤖 Robotique'),
@@ -425,6 +520,7 @@ function renderHeader(){
     h('span',{class:'sp'}),
     D.classes.length && !['biblio','donnees'].includes(U.view) ? h('select',{value:c?c.id:'',title:'Classe',onchange:e=>{U.classeId=e.target.value;U.seanceId=null;saveUI();render();}}, D.classes.map(x=>h('option',{value:x.id},x.nom))) : null,
     dbxBadge(),
+    h('button',{title:'Paramètres (thème)',onclick:settingsModal},'⚙'),
     h('button',{title:'Annuler la dernière action (Ctrl+Z)',onclick:undo,disabled:!undoStack.length},'↶'),
     h('span',{class:'ver'},APP_VERSION)].filter(Boolean));
 }
@@ -533,7 +629,7 @@ function colEq(s, q, pm){
     const n = (pm.get(pairKey(q.eleves[i],q.eleves[j]))||[]).length;
     if (n) rep.push(short(eleve(q.eleves[i]))+' + '+short(eleve(q.eleves[j]))+' : déjà '+n+' fois'); }
   const mats = [...q.materiels.map(id=>['materiels',id]), ...q.tapis.map(id=>['tapis',id])];
-  return h('div',{class:'col',dataset:{drop:'eq:'+q.id}},
+  return h('div',{class:'col',style:{'--tc':teamColor(s.equipes.indexOf(q))},dataset:{drop:'eq:'+q.id}},
     h('div',{class:'colh'},
       h('input',{class:'eqname',value:q.nom,onchange:e=>commit(()=>q.nom=e.target.value,true)}),
       rep.length ? h('span',{class:'warn',title:rep.join('\n')},'↺ '+rep.length) : null,
@@ -1004,7 +1100,7 @@ function taskDetail(v, H){
 }
 function vProjo(m){
   const s = byId(D.seances, U.seanceId); if (!s){ U.mode=''; return render(); }
-  m.append(h('div',{class:'projo',style:{gridTemplateColumns:gridCols(s.equipes.length,220)}}, s.equipes.map(q => h('div',{class:'col'},
+  m.append(h('div',{class:'projo',style:{gridTemplateColumns:gridCols(s.equipes.length,220)}}, s.equipes.map((q,qi) => h('div',{class:'col',style:{'--tc':teamColor(qi)}},
     h('div',{class:'colh'}, h('b',{style:{fontSize:'18px'}},q.nom)),
     h('div',{class:'zone'}, q.eleves.map(id=>{ const e=eleve(id); return e ? h('span',{class:'chip',style:{cursor:'default'}}, h('span',{class:'av',style:{background:`hsl(${hue(e.id)} 45% 45%)`}},initials(e)), short(e)) : null; })),
     h('div',{class:'tl',dataset:{cur:String(curIdx(q.taches))}}, q.taches.map((t,i) => { const st = ST[t.statut]||ST.afaire;
@@ -1192,11 +1288,36 @@ function dbxCard(){
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && !document.body.classList.contains('stu')) dbxSync(); });
 
+/* ─────────────── Paramètres : thèmes ─────────────── */
+const THEME_KEY = 'robotique-theme';
+const TEAM_COLORS = ['#EC4899','#0EA5E9','#10B981','#F97316','#8B5CF6','#CA8A04','#EF4444','#14B8A6'];
+const teamColor = i => TEAM_COLORS[(i<0?0:i) % TEAM_COLORS.length];
+const THEMES_UI = [
+  ['classique','Classique','Sobre et clair, comme PlanClasse.',['#F5F3EE','#0E7490','#E4EDE2']],
+  ['bonbon','Bonbon','Violet, jaune et rose, formes très arrondies.',['#7C3AED','#FACC15','#EC4899']],
+  ['bd','Bande dessinée','Contours noirs, ombres franches, titres BD.',['#2563EB','#FDE047','#EF4444']]];
+function applyTheme(){
+  let t = 'classique'; try { t = localStorage.getItem(THEME_KEY) || 'classique'; } catch(_){}
+  document.body.classList.remove('th-bonbon','th-bd'); if (t!=='classique') document.body.classList.add('th-'+t);
+  const tc = {classique:'#0E7490', bonbon:'#7C3AED', bd:'#2563EB'}[t]; const m = document.querySelector('meta[name=theme-color]'); if (m && tc) m.setAttribute('content', tc);
+}
+function settingsModal(){
+  const box = h('div',{class:'thopts'});
+  const draw = () => { const cur = localStorage.getItem(THEME_KEY) || 'classique';
+    box.replaceChildren(...THEMES_UI.map(([k,l,d,cols]) => h('button',{type:'button',class:'thopt'+(k===cur?' on':''),'aria-pressed':String(k===cur),onclick:()=>{ localStorage.setItem(THEME_KEY,k); applyTheme(); draw(); }},
+      h('span',{class:'sw'}, cols.map(c=>h('i',{style:{background:c}}))), h('b',null,l), h('small',null,d)))); };
+  draw();
+  modal('⚙ Paramètres', h('div',null, h('div',{class:'sub',style:{marginTop:0,marginBottom:'8px'}},'Thème'), box,
+    h('p',{class:'muted',style:{fontSize:'12px',marginBottom:0}},'Le thème s\'applique tout de suite et reste mémorisé sur cet ordinateur. Chaque poste (prof, projection, élèves) peut avoir le sien.')),
+    [{l:'Fermer',cls:'pri'}]);
+}
+applyTheme();
+
 /* ─────────────── Écran d'accueil ─────────────── */
 const ROLE_KEY = 'robotique-role';
 function splash(){
   let remember = false;
-  document.getElementById('hd').replaceChildren(h('h1',null,'🤖 Robotique'), h('span',{class:'sp',style:{flex:1}}), h('span',{class:'ver'},APP_VERSION));
+  document.getElementById('hd').replaceChildren(h('h1',null,'🤖 Robotique'), h('span',{class:'sp',style:{flex:1}}), h('button',{title:'Paramètres',onclick:settingsModal},'⚙'), h('span',{class:'ver'},APP_VERSION));
   document.getElementById('main').replaceChildren(h('div',{class:'splash'},
     h('h2',null,'Atelier robotique'), h('p',{class:'muted'},'Qui utilise cet ordinateur ?'),
     h('div',{class:'choices'},
@@ -1234,6 +1355,7 @@ function studentApp(){
   function draw(){
     const q = teamOf();
     hd.replaceChildren(h('h1',null,'🤖 Robotique'), q ? h('b',{style:{fontSize:'18px'}},q.n) : null, h('span',{class:'sp'}),
+      h('button',{title:'Paramètres',onclick:settingsModal},'⚙'),
       P.code ? h('span',{class:'livebadge'}, h('span',{class:'dot'+(S.ok?' ok':'')}), S.ok ? 'Connecté' : 'Connexion…') : null,
       q ? h('button',{onclick:()=>{ P.team=null; keep(); draw(); }},'Changer d\'équipe') : null,
       P.code ? h('button',{onclick:()=>{ P = {code:'',team:null,loc:{done:{},h:{}}}; keep(); if (S.es) S.es.close(); history.replaceState(null,'',location.pathname+'#eleve'); draw(); }},'Changer de code') : null,
