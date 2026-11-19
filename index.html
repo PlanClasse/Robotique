@@ -285,7 +285,7 @@ body.th-bd{--bg:#FFF6DA;--sur:#FFFFFF;--brd:#111111;--tx:#111111;--mut:#44403C;-
 <main id="main"></main>
 <script>
 'use strict';
-const APP_VERSION = 'v1.4.0';
+const APP_VERSION = 'v1.5.0';
 const KEY = 'robotique-data-v1', UIKEY = 'robotique-ui-v1';
 
 /* ─────────────── Utilitaires ─────────────── */
@@ -507,24 +507,27 @@ function deleteItem(type, id){
 /* ─────────────── En-tête ─────────────── */
 const VIEWS = [['seance','🧩 Séance'],['eleves','👥 Élèves'],['historique','🔁 Historique'],['progression','📈 Progression'],['biblio','📚 Bibliothèque'],['donnees','⚙️ Données']];
 function renderHeader(){
+  if (isLocked() && !document.body.classList.contains('stu')) return;
   const hd = document.getElementById('hd'); const c = curClasse();
   if (U.mode==='projo'){ const s = byId(D.seances,U.seanceId); const code = s && s.live && s.live.on ? s.live.code : null;
     hd.replaceChildren(h('div',{class:'ph'}, h('h1',null,'🤖 '+(s ? (s.titre || 'Séance du '+fmtDate(s.date)) : 'Robotique')),
       code ? h('span',{class:'join'},'Sur votre machine : '+joinUrl(null)+' · code ', h('b',null,code)) : null,
       h('span',{class:'sp',style:{flex:1}}), code ? liveBadge() : null,
       h('button',{title:'Paramètres',onclick:settingsModal},'⚙'),
-      h('button',{onclick:()=>askPin(()=>{U.mode='';render();})},'⏏ Quitter le mode élève'))); return; }
+      h('button',{onclick:()=>askProf(()=>{U.mode='';render();})},'⏏ Quitter le mode élève'))); return; }
   hd.replaceChildren(...[
     h('h1',null,'🤖 Robotique'),
     h('nav',null, VIEWS.map(([k,l]) => h('button',{class:U.view===k?'on':'',onclick:()=>{U.view=k;saveUI();render();}},l))),
     h('span',{class:'sp'}),
     D.classes.length && !['biblio','donnees'].includes(U.view) ? h('select',{value:c?c.id:'',title:'Classe',onchange:e=>{U.classeId=e.target.value;U.seanceId=null;saveUI();render();}}, D.classes.map(x=>h('option',{value:x.id},x.nom))) : null,
     dbxBadge(),
-    h('button',{title:'Paramètres (thème)',onclick:settingsModal},'⚙'),
+    h('button',{title:'Paramètres (thème, accès prof)',onclick:settingsModal},'⚙'),
+    D.profLock ? h('button',{title:'Verrouiller l\'espace prof',onclick:lockNow},'🔒') : null,
     h('button',{title:'Annuler la dernière action (Ctrl+Z)',onclick:undo,disabled:!undoStack.length},'↶'),
     h('span',{class:'ver'},APP_VERSION)].filter(Boolean));
 }
 function render(){
+  if (isLocked() && !document.body.classList.contains('stu')) return lockScreen();
   renderHeader();
   const m = document.getElementById('main'); const sx = m.scrollLeft, sy = m.scrollTop;
   const bx = (m.querySelector('.board')||{}).scrollLeft||0;
@@ -1242,7 +1245,8 @@ async function dbxUpload(){
   const j = await r.json(); DB.rev = j.rev; DB.syncedMod = D._mod||0; DB.last = Date.now(); dbSave(); return 'ok';
 }
 function dbxAdopt(rem){
-  D = normalize(rem.data); DB.rev = rem.meta.rev; DB.syncedMod = D._mod||0; DB.last = Date.now(); dbSave();
+  D = normalize(rem.data); if (localStorage.getItem(RESET_KEY)){ delete D.profLock; localStorage.removeItem(RESET_KEY); setTimeout(()=>toast('Mot de passe prof supprimé : définissez-en un nouveau dans ⚙ Paramètres'),300); }
+  DB.rev = rem.meta.rev; DB.syncedMod = D._mod||0; DB.last = Date.now(); dbSave();
   try { localStorage.setItem(KEY, JSON.stringify(D)); } catch(_){} liveTick(); render();
 }
 async function dbxSync(){
@@ -1307,11 +1311,98 @@ function settingsModal(){
     box.replaceChildren(...THEMES_UI.map(([k,l,d,cols]) => h('button',{type:'button',class:'thopt'+(k===cur?' on':''),'aria-pressed':String(k===cur),onclick:()=>{ localStorage.setItem(THEME_KEY,k); applyTheme(); draw(); }},
       h('span',{class:'sw'}, cols.map(c=>h('i',{style:{background:c}}))), h('b',null,l), h('small',null,d)))); };
   draw();
+  const prof = !document.body.classList.contains('stu') && !isLocked() && U.mode!=='projo' && document.querySelector('nav');
   modal('⚙ Paramètres', h('div',null, h('div',{class:'sub',style:{marginTop:0,marginBottom:'8px'}},'Thème'), box,
-    h('p',{class:'muted',style:{fontSize:'12px',marginBottom:0}},'Le thème s\'applique tout de suite et reste mémorisé sur cet ordinateur. Chaque poste (prof, projection, élèves) peut avoir le sien.')),
+    h('p',{class:'muted',style:{fontSize:'12px'}},'Le thème s\'applique tout de suite et reste mémorisé sur cet ordinateur. Chaque poste (prof, projection, élèves) peut avoir le sien.'),
+    prof ? lockSection() : null),
     [{l:'Fermer',cls:'pri'}]);
 }
 applyTheme();
+
+/* ─────────────── Accès prof : mot de passe ─────────────── */
+const UNLOCK_KEY = 'robotique-unlocked', RESET_KEY = 'robotique-reset';
+let lastActivity = Date.now(), badTries = 0;
+const isLocked = () => !!(D.profLock && sessionStorage.getItem(UNLOCK_KEY)!=='1');
+const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+async function hashPw(pw, salt, iter){
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({name:'PBKDF2', salt:Uint8Array.from(atob(salt), c=>c.charCodeAt(0)), iterations:iter, hash:'SHA-256'}, key, 256);
+  return b64(bits);
+}
+async function makeLock(pw){ const salt = b64(crypto.getRandomValues(new Uint8Array(16))), iter = 150000; return {salt, iter, hash: await hashPw(pw, salt, iter)}; }
+async function checkPw(pw){ if (!D.profLock) return true; const L = D.profLock; return (await hashPw(pw, L.salt, L.iter||150000)) === L.hash; }
+function pwField(ph, onEnter){ return h('input',{type:'password',autocomplete:'current-password',placeholder:ph,onkeydown:e=>{ if (e.key==='Enter' && onEnter) onEnter(); }}); }
+function lockNow(){ sessionStorage.removeItem(UNLOCK_KEY); document.querySelectorAll('.ov').forEach(o=>o.remove()); lockScreen(); }
+function lockScreen(){
+  document.body.classList.remove('stu');
+  const inp = pwField('Mot de passe prof', ()=>go()); const msg = h('p',{class:'muted',style:{minHeight:'20px'}});
+  const go = async () => {
+    if (badTries >= 3){ const wait = Math.min(30, 2 ** (badTries-2)); msg.textContent = 'Patientez '+wait+' s…'; await new Promise(r=>setTimeout(r, wait*1000)); }
+    if (await checkPw(inp.value)){ badTries = 0; sessionStorage.setItem(UNLOCK_KEY,'1'); lastActivity = Date.now(); startProf(); }
+    else { badTries++; inp.value = ''; inp.focus(); msg.textContent = 'Mot de passe incorrect.'; }
+  };
+  document.getElementById('hd').replaceChildren(h('h1',null,'🤖 Robotique'), h('span',{class:'sp',style:{flex:1}}), h('span',{class:'ver'},APP_VERSION));
+  document.getElementById('main').replaceChildren(h('div',{class:'empty card',style:{maxWidth:'420px'}},
+    h('div',{style:{fontSize:'44px'}},'🔒'), h('h2',null,'Espace prof'),
+    h('p',{class:'muted'},'Saisissez votre mot de passe.'),
+    h('div',{class:'row',style:{justifyContent:'center'}}, inp, h('button',{class:'pri',onclick:go},'Déverrouiller')), msg,
+    h('div',{class:'row',style:{justifyContent:'center',marginTop:'12px',fontSize:'13px'}},
+      h('a',{href:'#',onclick:e=>{ e.preventDefault(); localStorage.removeItem(ROLE_KEY); history.replaceState(null,'',location.pathname+'#eleve'); studentApp(); }},'🎒 Je suis élève'), ' · ',
+      h('a',{href:'#',onclick:e=>{ e.preventDefault(); forgotPw(); }},'Mot de passe oublié ?'))));
+  setTimeout(()=>inp.focus(), 30);
+}
+function forgotPw(){
+  let txt = '';
+  modal('Mot de passe oublié', h('div',null,
+    h('p',null,'Le mot de passe ne peut pas être récupéré. La seule solution est d\'effacer les données de cet ordinateur.'),
+    h('p',null, DB.refresh || D._mod ? 'Vos données restent dans Dropbox (si la synchronisation était active) et dans vos sauvegardes exportées. Après l\'effacement, reconnectez Dropbox depuis Données : la connexion à votre compte Dropbox prouve que c\'est vous, et le mot de passe sera supprimé.' : ''),
+    h('div',{class:'fld'}, h('span',null,'Tapez EFFACER pour confirmer'), h('input',{type:'text',oninput:e=>txt=e.target.value}))),
+    [{l:'Annuler'},{l:'Effacer cet ordinateur',cls:'danger',fn:()=>{ if (txt.trim().toUpperCase()!=='EFFACER'){ toast('Tapez EFFACER'); return false; }
+      localStorage.removeItem(KEY); localStorage.removeItem(DKEY); localStorage.setItem(RESET_KEY,'1'); DB = {}; D = emptyData(); sessionStorage.setItem(UNLOCK_KEY,'1'); startProf(); toast('Données effacées sur cet ordinateur'); }}]);
+}
+function askProf(fn){
+  if (!D.profLock) return askPin(fn);
+  const inp = pwField('Mot de passe prof', ()=>box.querySelector('.mf .pri').click());
+  const close = modal('Mot de passe prof', h('div',{class:'fld'}, h('span',null,'Réservé au professeur'), inp),
+    [{l:'Annuler'},{l:'OK',cls:'pri',fn:()=>{ checkPw(inp.value).then(ok=>{ if (ok){ close(); fn(); } else { toast('Mot de passe incorrect'); inp.value=''; inp.focus(); } }); return false; }}]);
+  const box = inp.closest('.modal');
+}
+function lockSection(){
+  const wrap = h('div',{style:{marginTop:'14px'}});
+  const draw = () => {
+    if (!D.profLock){
+      const a = pwField('Nouveau mot de passe'), b = pwField('Confirmer');
+      a.autocomplete = b.autocomplete = 'new-password';
+      wrap.replaceChildren(h('div',{class:'sub'},'Accès prof'),
+        h('p',{style:{fontSize:'13px',margin:'4px 0'}},'⚠ Aucun mot de passe : n\'importe qui peut ouvrir l\'espace prof sur cet ordinateur.'),
+        h('div',{class:'row'}, a, b, h('button',{class:'pri',onclick:async()=>{
+          if (a.value.length<4) return toast('4 caractères minimum'); if (a.value!==b.value) return toast('Les deux saisies diffèrent');
+          const L = await makeLock(a.value); sessionStorage.setItem(UNLOCK_KEY,'1'); commit(()=>{ D.profLock = L; if (D.lockDelay==null) D.lockDelay = 20; }, true); toast('Espace prof protégé'); draw(); }},'🔒 Protéger')));
+    } else {
+      wrap.replaceChildren(h('div',{class:'sub'},'Accès prof'),
+        h('p',{style:{fontSize:'13px',margin:'4px 0'}},'🔒 Protégé par mot de passe. Il est demandé à l\'ouverture de l\'espace prof et pour quitter le mode élève.'),
+        h('div',{class:'row'}, h('span',{style:{fontSize:'13px'}},'Verrouillage automatique après'),
+          h('select',{value:String(D.lockDelay||0),onchange:e=>commit(()=>D.lockDelay=+e.target.value,true)}, [[0,'jamais'],[5,'5 min'],[10,'10 min'],[20,'20 min'],[45,'45 min']].map(([v,l])=>h('option',{value:String(v)},l))),
+          h('span',{class:'muted',style:{fontSize:'12px'}},'d\'inactivité (sauf en mode élève)')),
+        h('div',{class:'row'},
+          h('button',{onclick:()=>{ const o = pwField('Mot de passe actuel'), a = pwField('Nouveau'), b = pwField('Confirmer');
+            modal('Changer le mot de passe', h('div',{style:{display:'flex',flexDirection:'column',gap:'8px'}}, o, a, b), [{l:'Annuler'},{l:'Changer',cls:'pri',fn:()=>{
+              (async()=>{ if (!await checkPw(o.value)) return toast('Mot de passe actuel incorrect'); if (a.value.length<4) return toast('4 caractères minimum'); if (a.value!==b.value) return toast('Les deux saisies diffèrent');
+                const L = await makeLock(a.value); commit(()=>D.profLock = L, true); toast('Mot de passe changé'); o.closest('.ov').remove(); })(); return false; }}]); }},'Changer le mot de passe'),
+          h('button',{class:'danger',onclick:()=>{ const o = pwField('Mot de passe actuel');
+            modal('Supprimer la protection', h('div',null, h('p',null,'L\'espace prof ne sera plus protégé.'), o), [{l:'Annuler'},{l:'Supprimer',cls:'danger',fn:()=>{
+              checkPw(o.value).then(ok=>{ if (!ok) return toast('Mot de passe incorrect'); commit(()=>delete D.profLock, true); o.closest('.ov').remove(); draw(); toast('Protection supprimée'); }); return false; }}]); }},'Supprimer la protection')),
+        h('p',{class:'muted',style:{fontSize:'12px'}},'Avec Dropbox, le mot de passe suit vos données sur tous vos ordinateurs. Les élèves n\'en ont pas besoin : leur page d\'équipe reste libre.'));
+    }
+  };
+  draw(); return wrap;
+}
+['pointerdown','keydown','wheel'].forEach(ev => document.addEventListener(ev, ()=>{ lastActivity = Date.now(); }, {passive:true}));
+setInterval(() => {
+  if (!D.profLock || !D.lockDelay || isLocked() || document.body.classList.contains('stu') || U.mode==='projo') return;
+  if (!document.querySelector('nav')) return;
+  if (Date.now() - lastActivity > D.lockDelay*60000) lockNow();
+}, 20000);
 
 /* ─────────────── Écran d'accueil ─────────────── */
 const ROLE_KEY = 'robotique-role';
@@ -1325,7 +1416,7 @@ function splash(){
       h('button',{onclick:()=>{ if (remember) localStorage.setItem(ROLE_KEY,'eleve'); history.replaceState(null,'',location.pathname+'#eleve'); studentApp(); }}, h('span',{class:'ic'},'🎒'), h('b',null,'Mode élève'), h('span',{class:'d'},'Voir le chemin de mon équipe, les consignes et les coups de pouce.'))),
     h('label',{class:'row',style:{justifyContent:'center'}}, h('input',{type:'checkbox',onchange:e=>remember=e.target.checked}), 'Toujours ouvrir ce mode sur cet ordinateur')));
 }
-function startProf(){ document.body.classList.remove('stu'); if (U.mode==='projo' && !byId(D.seances,U.seanceId)) U.mode=''; render(); liveTick(); dbxSync(); }
+function startProf(){ document.body.classList.remove('stu'); if (isLocked()) return lockScreen(); if (U.mode==='projo' && !byId(D.seances,U.seanceId)) U.mode=''; render(); liveTick(); dbxSync(); }
 
 /* ─────────────── Page équipe (machine des élèves) ─────────────── */
 function studentApp(){
