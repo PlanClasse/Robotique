@@ -129,7 +129,7 @@ table{border-collapse:collapse}
 <main id="main"></main>
 <script>
 'use strict';
-const APP_VERSION = 'v1.1.0';
+const APP_VERSION = 'v1.1.1';
 const KEY = 'robotique-data-v1', UIKEY = 'robotique-ui-v1';
 
 /* ─────────────── Utilitaires ─────────────── */
@@ -230,7 +230,19 @@ function fmtOrigine(x){
 }
 const niveauOf = e => { const o = (e&&e.origine)||''; const m = o.match(/^([3-6])e/); return m ? m[1]+'e' : o.replace(/[^A-Z0-9].*$/i,'').slice(0,3); };
 function parseEleveLine(line){
-  let t = String(line).replace(/[;,\t|]+/g,' ').replace(/\s+/g,' ').trim(); if (!t) return null;
+  line = String(line);
+  // Colonnes (tableur ou export entre guillemets) : la colonne qui commence par une classe donne la classe,
+  // le reste de cette colonne est ignoré (ex. "ALBERT Arthur"	"5E5 Kathrine Switzer" → 5e5).
+  let cols = null;
+  if (line.includes('"')){ const q = [...line.matchAll(/"([^"]*)"/g)].map(m=>m[1].trim()).filter(Boolean); if (q.length>1) cols = q; }
+  if (!cols && line.includes('\t')){ const q = line.split('\t').map(x=>x.replace(/"/g,'').trim()).filter(Boolean); if (q.length>1) cols = q; }
+  if (cols){
+    if (cols.every(c=>/^(nom|prenom|nom prenom|prenom nom|nom et prenom|classe|division|eleve|eleves|groupe)s?$/.test(norm(c)))) return null;
+    let i = cols.findIndex(c=>CLS_START.test(c)), m;
+    if (i>=0) m = cols[i].match(CLS_START); else { i = cols.findIndex(c=>CLS_END.test(c)); if (i>=0) m = cols[i].match(CLS_END); }
+    if (m && cols.length>1){ const n = splitName(cols.filter((_,j)=>j!==i).join(' ')); if (n) return {...n, origine:fmtOrigine(m[1])}; }
+  }
+  let t = line.replace(/"/g,' ').replace(/[;,\t|]+/g,' ').replace(/\s+/g,' ').trim(); if (!t) return null;
   const n0 = norm(t); if (/\bnom\b/.test(n0) && /\bprenom\b/.test(n0)) return null; // ligne d'en-tête
   let origine = ''; let m = t.match(CLS_END);
   if (m){ origine = fmtOrigine(m[1]); t = t.slice(0, m.index).trim(); }
@@ -600,7 +612,7 @@ function vEleves(m){
     h('input',{type:'text',placeholder:'Classe (ex. 4eB)',size:10,oninput:e=>np.origine=e.target.value}),
     h('button',{class:'pri',onclick:()=>{ if(!np.prenom.trim()) return toast('Prénom manquant'); commit(()=>D.eleves.push({id:uid(),prenom:np.prenom.trim(),nom:np.nom.trim(),classeId:c.id,origine:fmtOrigine(np.origine),remarque:''})); }},'+ Élève')));
   if (!els.length){ m.append(h('div',{class:'empty card'}, h('p',null,'Aucun élève. Ajoutez-les ci-dessus, collez une liste dans Données, ou importez depuis PlanClasse.'))); return; }
-  const groups = new Map(); for (const e of els.slice().sort((a,b)=>(a.origine||'~').localeCompare(b.origine||'~','fr',{numeric:true}))){ const k = e.origine||''; if (!groups.has(k)) groups.set(k,[]); groups.get(k).push(e); }
+  const groups = new Map(); for (const e of els.slice().sort((a,b)=>(!a.origine)-(!b.origine) || (a.origine||'').localeCompare(b.origine||'','fr',{numeric:true}))){ const k = e.origine||''; if (!groups.has(k)) groups.set(k,[]); groups.get(k).push(e); }
   const multi = groups.size>1 || !groups.has('');
   for (const [k, list] of groups){
   if (multi) m.append(h('h2',{style:{fontSize:'18px',margin:'14px 0 6px'}}, (k||'Classe non renseignée')+' — '+list.length));
