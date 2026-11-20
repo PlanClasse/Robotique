@@ -1,3 +1,7 @@
 dev/
 *-sauvegarde-*.json
 *.json.bak
+Fiches defis/
+*.pdf
+captures/
+Banque de blocs/
