@@ -165,6 +165,8 @@ button.big{font-size:17px;padding:10px 18px}
 .tl{display:flex;flex-direction:column;gap:6px;position:relative}
 .gridmode .tl,.projo .tl{flex:1;overflow-y:auto;min-height:40px;padding:2px}
 .projo{display:grid;gap:10px}
+.gridmode .tg.r1 .col{height:calc(100vh - 215px)}
+.projo.r1 .col{height:calc(100vh - 110px)}
 .projo .col{height:calc((100vh - 110px)/2);min-height:220px;overflow:hidden}
 .photos{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .phot{position:relative}
@@ -183,6 +185,15 @@ button.big{font-size:17px;padding:10px 18px}
 .choices span.d{color:var(--mut);font-size:14px}
 .dbx{font-size:12px;border:1px solid var(--brd);border-radius:14px;padding:3px 9px;background:var(--sur);cursor:pointer;white-space:nowrap}
 @media (max-width:700px){.choices{grid-template-columns:1fr}}
+.seq{display:flex;flex-direction:column;gap:4px}
+.seqrow{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:4px 6px;font-size:13px}
+.seqrow .sn{width:22px;height:22px;border-radius:50%;background:var(--acc);color:#fff;display:inline-grid;place-items:center;font-size:11px;font-weight:600;flex:none}
+.gbadge{font-size:11px;font-weight:700;color:#fff;border-radius:10px;padding:1px 8px;white-space:nowrap}
+.grp{margin-bottom:10px}
+.gdot{width:14px;height:14px;border-radius:50%;flex:none}
+.tpick{display:inline-flex;align-items:center;gap:4px;font-size:13px;padding:4px 10px;border-radius:14px;border:1px solid var(--brd);cursor:pointer;background:var(--sur);user-select:none}
+.tpick.on{color:#fff;border-color:transparent}
+.tpick.other{opacity:.45}
 /* ═══════ Paramètres / thèmes ═══════ */
 .thopts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .thopt{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px;text-align:left;border-radius:14px}
@@ -285,7 +296,7 @@ body.th-bd{--bg:#FFF6DA;--sur:#FFFFFF;--brd:#111111;--tx:#111111;--mut:#44403C;-
 <main id="main"></main>
 <script>
 'use strict';
-const APP_VERSION = 'v1.5.0';
+const APP_VERSION = 'v1.6.0';
 const KEY = 'robotique-data-v1', UIKEY = 'robotique-ui-v1';
 
 /* ─────────────── Utilitaires ─────────────── */
@@ -319,6 +330,7 @@ function download(name, text){ const a=h('a',{href:URL.createObjectURL(new Blob(
 const TYPES = {
   defis:        {label:'Défis', one:'défi', icon:'🏆', task:true},
   exercices:    {label:'Exercices', one:'exercice', icon:'📝', task:true},
+  parcours:     {label:'Séries', one:'série', icon:'🧭'},
   etapes:       {label:'Progression', one:'étape', icon:'📈'},
   connaissances:{label:'Connaissances', one:'connaissance', icon:'💡'},
   materiels:    {label:'Matériels', one:'matériel', icon:'🤖'},
@@ -327,6 +339,7 @@ const TYPES = {
 const TASK_FIELDS = [['titre','Titre'],['niveau','Difficulté','stars'],['etapeId','Étape de progression','etape'],['description','Consigne','textarea'],['aides','Coups de pouce (un par ligne, dévoilés un à un aux élèves)','textarea'],
   ['materiels','Matériel','multi','materiels'],['tapis','Tapis','multi','tapis'],['connaissances','Connaissances mobilisées','multi','connaissances']];
 TYPES.defis.fields = TASK_FIELDS; TYPES.exercices.fields = TASK_FIELDS;
+TYPES.parcours.fields = [['titre','Titre'],['description','Objectif','textarea'],['items','Exercices et défis, dans l\'ordre','seq']];
 TYPES.etapes.fields = [['titre','Titre'],['description','Objectif','textarea'],['connaissances','Connaissances visées','multi','connaissances']];
 TYPES.connaissances.fields = [['titre','Intitulé'],['domaine','Domaine / thème'],['description','Description','textarea']];
 TYPES.materiels.fields = [['titre','Nom'],['quantite','Quantité disponible','number'],['description','Remarques','textarea'],['photos','Photos','photos']];
@@ -343,11 +356,11 @@ const ST_ORDER = ['afaire','encours','avalider','reussi','reprendre'];
 const STU = {afaire:'À faire', encours:'En cours', avalider:'À montrer à vos coachs', reussi:'Validé ✓', reprendre:'À reprendre'};
 const PST = { non:{l:'Non commencé',c:'#F1EFE9',t:'#6B675C'}, encours:{l:'En cours',c:'#FDE68A',t:'#78350F'}, acquis:{l:'Acquis',c:'#86EFAC',t:'#14532D'} };
 
-function emptyData(){ return {v:1, classes:[], eleves:[], lib:{defis:[],exercices:[],etapes:[],connaissances:[],materiels:[],tapis:[]}, seances:[], prog:{}}; }
+function emptyData(){ return {v:1, classes:[], eleves:[], lib:{defis:[],exercices:[],parcours:[],etapes:[],connaissances:[],materiels:[],tapis:[]}, seances:[], prog:{}}; }
 function normalize(d){
   const e = emptyData(); d = Object.assign(e, d||{});
   d.lib = Object.assign(emptyData().lib, d.lib||{});
-  for (const s of d.seances){ s.equipes = s.equipes||[]; s.reserve = s.reserve||[]; s.absents = s.absents||[];
+  for (const s of d.seances){ s.equipes = s.equipes||[]; s.reserve = s.reserve||[]; s.absents = s.absents||[]; s.groupes = s.groupes||[];
     for (const q of s.equipes){ q.eleves=q.eleves||[]; q.taches=q.taches||[]; q.materiels=q.materiels||[]; q.tapis=q.tapis||[]; } }
   d.prog = d.prog||{};
   return d;
@@ -471,6 +484,18 @@ function field(fd, f){
     const draw = () => inp.replaceChildren(...f[key].map((src,i)=>h('span',{class:'phot'}, h('img',{src,onclick:()=>viewPhoto(src)}), h('button',{type:'button',class:'x del',title:'Retirer',onclick:()=>{f[key].splice(i,1);draw();}},'×'))),
       h('label',{class:'addph'},'📷 Ajouter', h('input',{type:'file',accept:'image/*',multiple:true,style:{display:'none'},onchange:async e=>{ for (const file of e.target.files){ try { f[key].push(await shrinkImage(file)); } catch(_){ toast('Image illisible'); } } draw(); }})));
     draw(); }
+  else if (kind==='seq'){ f[key] = (f[key]||[]).map(r=>({...r})); inp = h('div',{class:'seq'});
+    const L = f[key]; const mv = (i,j) => { if (j<0 || j>=L.length) return; [L[i],L[j]] = [L[j],L[i]]; draw(); };
+    const draw = () => inp.replaceChildren(
+      ...L.map((r,i) => { const it = byId(D.lib[r.t]||[], r.id);
+        return h('div',{class:'seqrow'}, h('span',{class:'sn'},String(i+1)), h('span',{style:{flex:1}}, TYPES[r.t].icon+' '+(it?it.titre:'(supprimé)')+(it&&it.niveau?' '+'★'.repeat(it.niveau):'')),
+          h('button',{type:'button',class:'x',title:'Monter',onclick:()=>mv(i,i-1)},'↑'), h('button',{type:'button',class:'x',title:'Descendre',onclick:()=>mv(i,i+1)},'↓'),
+          h('button',{type:'button',class:'x del',title:'Retirer',onclick:()=>{ L.splice(i,1); draw(); }},'×')); }),
+      h('select',{value:'',onchange:e=>{ const [t,id] = e.target.value.split(':'); if (id){ L.push({t,id}); draw(); } }},
+        h('option',{value:''},'+ Ajouter un exercice ou un défi…'),
+        h('optgroup',{label:'Exercices'}, D.lib.exercices.map(x=>h('option',{value:'exercices:'+x.id},x.titre))),
+        h('optgroup',{label:'Défis'}, D.lib.defis.map(x=>h('option',{value:'defis:'+x.id},x.titre+(x.niveau?' '+'★'.repeat(x.niveau):''))))));
+    draw(); }
   else if (kind==='multi'){ f[key] = [...(f[key]||[])];
     inp = h('div',{class:'multi'}, D.lib[extra].length ? D.lib[extra].map(it => { const b = h('button',{type:'button',class:'pick'+(f[key].includes(it.id)?' on':''),onclick:()=>{ const i=f[key].indexOf(it.id); if(i<0) f[key].push(it.id); else f[key].splice(i,1); b.classList.toggle('on'); }}, TYPES[extra].icon+' '+it.titre); return b; }) : h('span',{class:'muted'},'Rien dans « '+TYPES[extra].label+' » pour l\'instant.')); }
   else inp = h('input',{type:'text',value:f[key]||'',oninput:e=>f[key]=e.target.value});
@@ -499,7 +524,8 @@ function deleteItem(type, id){
   D.lib[type] = D.lib[type].filter(x => x.id!==id);
   for (const arr of Object.values(D.lib)) for (const it of arr){
     for (const k of ['materiels','tapis','connaissances']) if (Array.isArray(it[k])) it[k] = it[k].filter(x=>x!==id);
-    if (it.etapeId===id) it.etapeId = ''; }
+    if (it.etapeId===id) it.etapeId = '';
+    if (Array.isArray(it.items)) it.items = it.items.filter(r=>r.id!==id); }
   for (const s of D.seances) for (const q of s.equipes){ q.materiels = q.materiels.filter(x=>x!==id); q.tapis = q.tapis.filter(x=>x!==id); }
   for (const p of Object.values(D.prog)) delete p[id];
 }
@@ -556,10 +582,12 @@ function vSeance(m){
   const grid = U.layout!=='row';
   const ses = seancesOf(c.id).reverse();
   let s = byId(D.seances, U.seanceId); if (!s || s.classeId!==c.id) s = ses[0]; U.seanceId = s ? s.id : null;
+  if (s && !s.groupes) s.groupes = [];
   m.append(h('div',{class:'bar'},
     ses.length ? h('select',{value:s.id,onchange:e=>{U.seanceId=e.target.value;render();}}, ses.map(x=>h('option',{value:x.id},fmtDate(x.date)+(x.titre?' — '+x.titre:'')))) : null,
     h('button',{class:'pri',onclick:()=>newSeance(c)},'+ Nouvelle séance'),
     s && h('button',{onclick:()=>autoTeams(s)},'🎲 Équipes auto'),
+    s && h('button',{onclick:()=>groupsModal(s)},'👥 Groupes'+(s.groupes.length?' ('+s.groupes.length+')':'')),
     s && h('button',{onclick:()=>commit(()=>s.equipes.push(newEq(s)))},'+ Équipe'),
     h('span',{class:'sp'}),
     s && s.live && s.live.on ? liveBadge() : null,
@@ -608,7 +636,7 @@ function vSeance(m){
       h('div',{class:'zone'}, [...abs].map(id=>chipEl(eleve(id))))));
 
   const board = h('div',{class:'board'+(grid?' gridmode':'')}, pal, res,
-    h('div',{class:'tg',style:grid?{gridTemplateColumns:gridCols(s.equipes.length,200)}:{}}, s.equipes.map(q => colEq(s,q,pm)),
+    h('div',{class:'tg'+(s.equipes.length<=4?' r1':''),style:grid?{gridTemplateColumns:gridCols(s.equipes.length,200)}:{}}, byGroup(s).map(q => colEq(s,q,pm)),
       grid && s.equipes.length ? null : h('button',{class:'addcol',onclick:()=>commit(()=>s.equipes.push(newEq(s)))},'+ Équipe')));
   m.append(board);
 }
@@ -635,6 +663,7 @@ function colEq(s, q, pm){
   return h('div',{class:'col',style:{'--tc':teamColor(s.equipes.indexOf(q))},dataset:{drop:'eq:'+q.id}},
     h('div',{class:'colh'},
       h('input',{class:'eqname',value:q.nom,onchange:e=>commit(()=>q.nom=e.target.value,true)}),
+      groupBadge(s,q),
       rep.length ? h('span',{class:'warn',title:rep.join('\n')},'↺ '+rep.length) : null,
       h('button',{class:'x del',title:'Supprimer l\'équipe (élèves et tâches retournent en réserve)',onclick:()=>commit(()=>{ s.reserve.push(...q.taches); s.equipes = s.equipes.filter(x=>x!==q); })},'×')),
     h('div',{class:'zone'}, q.eleves.length ? q.eleves.map(id=>chipEl(eleve(id))) : h('div',{class:'hint'},'Glissez des élèves ici')),
@@ -729,16 +758,74 @@ function newSeance(c){
     prev ? h('label',{class:'row'}, h('input',{type:'checkbox',checked:f.copy,onchange:e=>f.copy=e.target.checked}), 'Reprendre les équipes de la séance du '+fmtDate(prev.date)) : null,
     prev ? h('label',{class:'row'}, h('input',{type:'checkbox',checked:f.mats,onchange:e=>f.mats=e.target.checked}), 'Reprendre aussi le matériel et les tâches non réussies') : null);
   modal('Nouvelle séance — '+c.nom, body, [{l:'Annuler'},{l:'Créer',cls:'pri',fn:()=>commit(()=>{
-    const s = {id:uid(), classeId:c.id, date:f.date||today(), titre:f.titre, notes:'', equipes:[], reserve:[], absents:[]};
+    const s = {id:uid(), classeId:c.id, date:f.date||today(), titre:f.titre, notes:'', equipes:[], reserve:[], absents:[], groupes:[]};
     if (prev && f.copy) s.equipes = prev.equipes.map(q => ({id:uid(), nom:q.nom, eleves:[...q.eleves], obs:'',
       materiels: f.mats ? [...q.materiels] : [], tapis: f.mats ? [...q.tapis] : [],
       taches: f.mats ? q.taches.filter(t=>t.statut!=='reussi').map(t=>({...newTask(t.ref,t.titre), statut:t.statut==='afaire'?'afaire':'encours'})) : []}));
+    if (prev && f.copy){ const mp = {}; prev.equipes.forEach((q,i)=>mp[q.id] = s.equipes[i].id);
+      s.groupes = (prev.groupes||[]).map(g=>({...g, id:uid(), equipes:g.equipes.map(x=>mp[x]).filter(Boolean)})); }
     D.seances.push(s); U.seanceId = s.id; })}]);
 }
 function addFreeTask(s, q){
   let titre = '';
   modal('Tâche libre', h('div',{class:'fld'}, h('span',null,'Intitulé'), h('input',{type:'text',oninput:e=>titre=e.target.value,onkeydown:e=>{ if(e.key==='Enter'){ e.target.closest('.modal').querySelector('.mf .pri').click(); } }})),
     [{l:'Annuler'},{l:'Ajouter',cls:'pri',fn:()=>{ if(!titre.trim()) return false; commit(()=>(q?q.taches:s.reserve).push(newTask(null,titre.trim()))); }}]);
+}
+/* Groupes d'équipes et séries d'exercices */
+const GROUP_COLORS = ['#7C3AED','#0E7490','#B45309','#BE185D','#047857','#4338CA'];
+const groupOf = (s,q) => (s.groupes||[]).find(g=>g.equipes.includes(q.id));
+const gColor = g => GROUP_COLORS[(g.c||0) % GROUP_COLORS.length];
+function groupBadge(s,q){ const g = groupOf(s,q); return g ? h('span',{class:'gbadge',style:{background:gColor(g)},title:'Groupe'},g.nom) : null; }
+function byGroup(s){ if (!s.groupes || !s.groupes.length) return s.equipes;
+  const rank = q => { const i = s.groupes.findIndex(g=>g.equipes.includes(q.id)); return i<0 ? 999 : i; };
+  return s.equipes.map((q,i)=>[q,i]).sort((a,b)=>rank(a[0])-rank(b[0]) || a[1]-b[1]).map(x=>x[0]); }
+function seriesSources(){
+  return [...D.lib.parcours.map(p=>({k:'p:'+p.id, l:'🧭 '+p.titre, items:p.items||[]})),
+    ...D.lib.etapes.map((e,i)=>({k:'e:'+e.id, l:'📈 Étape '+(i+1)+' : '+e.titre, items:[
+      ...D.lib.exercices.filter(x=>x.etapeId===e.id).sort((a,b)=>(a.niveau||0)-(b.niveau||0)).map(x=>({t:'exercices',id:x.id})),
+      ...D.lib.defis.filter(x=>x.etapeId===e.id).sort((a,b)=>(a.niveau||0)-(b.niveau||0)).map(x=>({t:'defis',id:x.id}))]}))].filter(x=>x.items.length);
+}
+function groupsModal(s){
+  s.groupes = s.groupes || [];
+  const box = h('div');
+  const draw = () => box.replaceChildren(
+    h('p',{class:'muted',style:{marginTop:0}},'Regroupez des équipes (par exemple « Débutants » et « Confirmés ») pour leur donner d\'un coup la même série d\'exercices. Une équipe appartient à un seul groupe.'),
+    ...s.groupes.map(g => h('div',{class:'card grp'},
+      h('div',{class:'row'}, h('span',{class:'gdot',style:{background:gColor(g)}}),
+        h('input',{type:'text',value:g.nom,'aria-label':'Nom du groupe',onchange:e=>commit(()=>g.nom=e.target.value.trim()||g.nom)}),
+        h('span',{style:{flex:1}}),
+        h('button',{class:'pri',onclick:()=>applySeries(s,g)},'🧭 Donner une série…'),
+        h('button',{class:'x del',title:'Supprimer le groupe (les équipes restent)',onclick:()=>{ commit(()=>s.groupes = s.groupes.filter(x=>x!==g)); draw(); }},'×')),
+      h('div',{class:'row'}, s.equipes.map(q => { const on = g.equipes.includes(q.id), other = !on && groupOf(s,q);
+        return h('button',{type:'button',class:'tpick'+(on?' on':'')+(other?' other':''),style:on?{background:gColor(g)}:{},'aria-pressed':String(on),title:other?'Dans « '+other.nom+' » : cliquer pour déplacer':'',
+          onclick:()=>{ commit(()=>{ for (const o of s.groupes) o.equipes = o.equipes.filter(x=>x!==q.id); if (!on) g.equipes.push(q.id); }); draw(); }}, (on?'✓ ':'')+q.nom); })))),
+    h('div',{class:'row'},
+      h('button',{onclick:()=>{ commit(()=>{ const used = new Set(s.groupes.map(g=>g.c)); let c = 0; while (used.has(c)) c++; s.groupes.push({id:uid(), nom:'Groupe '+(s.groupes.length+1), c, equipes:[]}); }); draw(); }},'+ Groupe'),
+      h('span',{style:{flex:1}}),
+      h('button',{onclick:()=>applySeries(s,null)},'🧭 Donner une série à toutes les équipes')));
+  draw();
+  modal('👥 Groupes d\'équipes', box, [{l:'Fermer',cls:'pri'}]);
+}
+function applySeries(s, g){
+  const teams = g ? s.equipes.filter(q=>g.equipes.includes(q.id)) : s.equipes;
+  if (!teams.length) return toast(g ? 'Ajoutez d\'abord des équipes à ce groupe' : 'Aucune équipe');
+  const src = seriesSources();
+  if (!src.length) return modal('Aucune série', h('p',null,'Créez une série dans Bibliothèque → Séries, ou reliez des exercices et des défis à une étape de progression.'), [{l:'Annuler'},{l:'Créer une série',cls:'pri',fn:()=>{ U.view='biblio'; U.libType='parcours'; render(); editItem('parcours',null); }}]);
+  const o = {k:src[0].k, mode:'add'};
+  const prev = h('ol',{style:{margin:'6px 0',paddingLeft:'22px',fontSize:'13px'}});
+  const upd = () => { const so = src.find(x=>x.k===o.k); prev.replaceChildren(...so.items.map(r=>h('li',null, TYPES[r.t].icon+' '+libTitle(r.t,r.id)))); };
+  upd();
+  modal('🧭 Donner une série'+(g?' — '+g.nom:' — toutes les équipes'), h('div',null,
+    h('div',{class:'fld'}, h('span',null,'Série'), h('select',{value:o.k,onchange:e=>{ o.k = e.target.value; upd(); }}, src.map(x=>h('option',{value:x.k},x.l)))),
+    prev,
+    h('div',{class:'fld'}, h('span',null,'Tâches déjà présentes'),
+      h('label',{class:'row',style:{margin:0}}, h('input',{type:'radio',name:'sm',checked:true,onchange:()=>o.mode='add'}), 'Ajouter la série à la suite (sans doublon)'),
+      h('label',{class:'row',style:{margin:0}}, h('input',{type:'radio',name:'sm',onchange:()=>o.mode='replace'}), 'Remplacer les tâches pas encore commencées')),
+    h('p',{class:'muted',style:{fontSize:'12px'}},'Équipes concernées : '+teams.map(q=>q.nom).join(', '))),
+    [{l:'Annuler'},{l:'Donner la série',cls:'pri',fn:()=>{ const so = src.find(x=>x.k===o.k); let n = 0;
+      commit(()=>{ for (const q of teams){ if (o.mode==='replace') q.taches = q.taches.filter(t=>t.statut!=='afaire');
+        for (const r of so.items) if (!q.taches.some(t=>t.ref && t.ref.id===r.id)){ q.taches.push(newTask({t:r.t, id:r.id})); n++; } } });
+      toast(n+' tâche(s) ajoutée(s) à '+teams.length+' équipe(s)'); }}]);
 }
 function editTask(t, s){
   const it = refItem(t); const f = {statut:t.statut, note:t.note||'', titre:t.titre||''};
@@ -938,6 +1025,7 @@ function vBiblio(m){
     it.description ? h('p',null,it.description) : null,
     it.etapeId ? h('span',{class:'tag'},'📈 '+libTitle('etapes',it.etapeId)) : null,
     ['materiels','tapis','connaissances'].map(k=>(it[k]||[]).map(id=>h('span',{class:'tag'},TYPES[k].icon+' '+libTitle(k,id)))),
+    t==='parcours' ? h('ol',{style:{margin:'6px 0 0',paddingLeft:'20px',fontSize:'13px'}}, (it.items||[]).map(r=>h('li',null, TYPES[r.t].icon+' '+libTitle(r.t,r.id)))) : null,
     t==='etapes' ? h('div',{class:'muted',style:{fontSize:'12px',marginTop:'6px'}}, [...D.lib.defis,...D.lib.exercices].filter(x=>x.etapeId===it.id).map(x=>x.titre).join(' · ')||'Aucun défi ni exercice relié') : null,
     use[it.id] ? h('div',{class:'muted',style:{fontSize:'12px',marginTop:'6px'}},'Donné '+use[it.id].n+' fois · réussi '+use[it.id].ok+' fois') : null))));
 }
@@ -1103,8 +1191,8 @@ function taskDetail(v, H){
 }
 function vProjo(m){
   const s = byId(D.seances, U.seanceId); if (!s){ U.mode=''; return render(); }
-  m.append(h('div',{class:'projo',style:{gridTemplateColumns:gridCols(s.equipes.length,220)}}, s.equipes.map((q,qi) => h('div',{class:'col',style:{'--tc':teamColor(qi)}},
-    h('div',{class:'colh'}, h('b',{style:{fontSize:'18px'}},q.nom)),
+  m.append(h('div',{class:'projo'+(s.equipes.length<=4?' r1':''),style:{gridTemplateColumns:gridCols(s.equipes.length,220)}}, byGroup(s).map(q => h('div',{class:'col',style:{'--tc':teamColor(s.equipes.indexOf(q))}},
+    h('div',{class:'colh'}, h('b',{style:{fontSize:'18px',flex:1}},q.nom), groupBadge(s,q)),
     h('div',{class:'zone'}, q.eleves.map(id=>{ const e=eleve(id); return e ? h('span',{class:'chip',style:{cursor:'default'}}, h('span',{class:'av',style:{background:`hsl(${hue(e.id)} 45% 45%)`}},initials(e)), short(e)) : null; })),
     h('div',{class:'tl',dataset:{cur:String(curIdx(q.taches))}}, q.taches.map((t,i) => { const st = ST[t.statut]||ST.afaire;
       return h('div',{class:'task'+(t.statut==='avalider'?' alert':''),style:{borderLeftColor:st.c},onclick:()=>taskDetail(taskView(t), {team:q.nom,
