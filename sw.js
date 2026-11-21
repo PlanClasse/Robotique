@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════════
-   Robotique — Service Worker (V1.9.0)
+   Robotique — Service Worker (V1.10.0)
    Fonctionnement hors-ligne après la première visite.
    Stratégie "stale-while-revalidate" : on sert le cache tout de suite
    et on récupère la nouvelle version en arrière-plan.
@@ -7,7 +7,7 @@
    À chaque nouvelle version : incrémenter APP_VERSION (index.html),
    l'en-tête ci-dessus et CACHE_NAME.
    ════════════════════════════════════════════════════════════════════ */
-const CACHE_NAME = 'robotique-v1-9-0';
+const CACHE_NAME = 'robotique-v1-10-0';
 const ASSETS = ['./', './index.html', './manifest.json', './fonts/bungee-shade.woff2', './fonts/bungee.woff2'];
 
 self.addEventListener('install', e => {
