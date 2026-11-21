@@ -354,10 +354,11 @@ body.th-bd{--bg:#FFF6DA;--sur:#FFFFFF;--brd:#111111;--tx:#111111;--mut:#44403C;-
 <main id="main"></main>
 <script>
 'use strict';
-const APP_VERSION = 'v1.10.0';
+const APP_VERSION = 'v1.10.1';
 const KEY = 'robotique-data-v1', UIKEY = 'robotique-ui-v1';
 
 /* ─────────────── Utilitaires ─────────────── */
+const setKids = (el, ...k) => el.replaceChildren(...k.flat(Infinity).filter(x => x!=null && x!==false));
 function h(tag, props, ...kids){
   const el = document.createElement(tag); let val;
   if (props) for (const [k,v] of Object.entries(props)){
@@ -536,15 +537,15 @@ function field(fd, f){
   const [key,label,kind,extra] = fd; let inp;
   if (kind==='textarea') inp = h('textarea',{rows:3,value:f[key]||'',oninput:e=>f[key]=e.target.value});
   else if (kind==='number') inp = h('input',{type:'number',min:0,value:f[key]??'',oninput:e=>f[key]=e.target.value===''?'':+e.target.value});
-  else if (kind==='stars'){ inp = h('div',{class:'stars'}); const draw=()=>inp.replaceChildren(...[1,2,3].map(n=>h('button',{type:'button',class:'star'+(n<=(f[key]||0)?' on':''),onclick:()=>{f[key]=f[key]===n?0:n;draw();}},'★'))); draw(); }
+  else if (kind==='stars'){ inp = h('div',{class:'stars'}); const draw=()=>setKids(inp, ...[1,2,3].map(n=>h('button',{type:'button',class:'star'+(n<=(f[key]||0)?' on':''),onclick:()=>{f[key]=f[key]===n?0:n;draw();}},'★'))); draw(); }
   else if (kind==='etape') inp = h('select',{value:f[key]||'',onchange:e=>f[key]=e.target.value}, h('option',{value:''},'—'), D.lib.etapes.map((s,i)=>h('option',{value:s.id},(i+1)+'. '+s.titre)));
   else if (kind==='photos'){ f[key] = [...(f[key]||[])]; inp = h('div',{class:'photos'});
-    const draw = () => inp.replaceChildren(...f[key].map((src,i)=>h('span',{class:'phot'}, h('img',{src,onclick:()=>viewPhoto(src)}), h('button',{type:'button',class:'x del',title:'Retirer',onclick:()=>{f[key].splice(i,1);draw();}},'×'))),
+    const draw = () => setKids(inp, ...f[key].map((src,i)=>h('span',{class:'phot'}, h('img',{src,onclick:()=>viewPhoto(src)}), h('button',{type:'button',class:'x del',title:'Retirer',onclick:()=>{f[key].splice(i,1);draw();}},'×'))),
       h('label',{class:'addph'},'📷 Ajouter', h('input',{type:'file',accept:'image/*',multiple:true,style:{display:'none'},onchange:async e=>{ for (const file of e.target.files){ try { f[key].push(await shrinkImage(file)); } catch(_){ toast('Image illisible'); } } draw(); }})));
     draw(); }
   else if (kind==='seq'){ f[key] = (f[key]||[]).map(r=>({...r})); inp = h('div',{class:'seq'});
     const L = f[key]; const mv = (i,j) => { if (j<0 || j>=L.length) return; [L[i],L[j]] = [L[j],L[i]]; draw(); };
-    const draw = () => inp.replaceChildren(
+    const draw = () => setKids(inp, 
       ...L.map((r,i) => { const it = byId(D.lib[r.t]||[], r.id);
         return h('div',{class:'seqrow'}, h('span',{class:'sn'},String(i+1)), h('span',{style:{flex:1}}, TYPES[r.t].icon+' '+(it?it.titre:'(supprimé)')+(it&&it.niveau?' '+'★'.repeat(it.niveau):'')),
           h('button',{type:'button',class:'x',title:'Monter',onclick:()=>mv(i,i-1)},'↑'), h('button',{type:'button',class:'x',title:'Descendre',onclick:()=>mv(i,i+1)},'↓'),
@@ -555,7 +556,7 @@ function field(fd, f){
         h('optgroup',{label:'Défis'}, D.lib.defis.map(x=>h('option',{value:'defis:'+x.id},x.titre+(x.niveau?' '+'★'.repeat(x.niveau):''))))));
     draw(); }
   else if (kind==='blocs'){ f[key] = [...(f[key]||[])]; inp = h('div',{class:'blocsfld'});
-    const draw = () => inp.replaceChildren(...f[key].map((id,i)=>h('span',{class:'phot'}, blocImg(id,0.5), h('button',{type:'button',class:'x del',title:'Retirer',onclick:()=>{f[key].splice(i,1);draw();}},'×'))),
+    const draw = () => setKids(inp, ...f[key].map((id,i)=>h('span',{class:'phot'}, blocImg(id,0.5), h('button',{type:'button',class:'x del',title:'Retirer',onclick:()=>{f[key].splice(i,1);draw();}},'×'))),
       h('button',{type:'button',onclick:()=>blocsModal({pick:f[key], done:ids=>{f[key]=ids;draw();}})}, f[key].length ? '🧱 Modifier…' : '🧱 Choisir des blocs…'));
     draw(); }
   else if (kind==='multi'){ f[key] = [...(f[key]||[])];
@@ -581,7 +582,7 @@ function blocsModal(opt={}){
   const list = h('div'), cnt = h('span',{class:'muted'});
   const count = () => { if (sel) cnt.textContent = sel.size+' bloc(s) choisi(s)'; };
   const draw = () => { const nq = norm(q);
-    list.replaceChildren(...Object.entries(BCAT()).filter(([c])=>!cat||c===cat).map(([c,v]) => {
+    setKids(list, ...Object.entries(BCAT()).filter(([c])=>!cat||c===cat).map(([c,v]) => {
       const ids = Object.keys(BLOCS).filter(id => BLOCS[id][0]===c && (!nq || norm(BLOCS[id][1]).includes(nq) || norm(v.l).includes(nq)));
       return ids.length ? h('div',{class:'mcat'}, h('h3',null, h('img',{src:v.i,alt:''}), v.l, h('span',{class:'muted',style:{fontWeight:400}},'('+ids.length+')')),
         h('div',{class:'mgrid'}, ids.map(id => { const b = h('button',{type:'button',class:'bk'+(sel&&sel.has(id)?' on':''),title:BLOCS[id][1],onclick:()=>{
@@ -636,12 +637,12 @@ function renderHeader(){
   if (isLocked() && !document.body.classList.contains('stu')) return;
   const hd = document.getElementById('hd'); const c = curClasse();
   if (U.mode==='projo'){ const s = byId(D.seances,U.seanceId); const code = s && s.live && s.live.on ? s.live.code : null;
-    hd.replaceChildren(h('div',{class:'ph'}, h('h1',null,'🤖 '+(s ? (s.titre || 'Séance du '+fmtDate(s.date)) : 'Robotique')),
+    setKids(hd, h('div',{class:'ph'}, h('h1',null,'🤖 '+(s ? (s.titre || 'Séance du '+fmtDate(s.date)) : 'Robotique')),
       code ? h('span',{class:'join'},'Sur votre machine : '+joinUrl(null)+' · code ', h('b',null,code)) : null,
       h('span',{class:'sp',style:{flex:1}}), code ? liveBadge() : null,
       h('button',{title:'Paramètres',onclick:settingsModal},'⚙'),
       h('button',{onclick:()=>askProf(()=>{U.mode='';render();})},'⏏ Quitter le mode élève'))); return; }
-  hd.replaceChildren(...[
+  setKids(hd, ...[
     h('h1',null,'🤖 Robotique'),
     h('nav',null, VIEWS.map(([k,l]) => h('button',{class:U.view===k?'on':'',onclick:()=>{U.view=k;saveUI();render();}},l))),
     h('span',{class:'sp'}),
@@ -891,7 +892,7 @@ function seriesSources(){
 function groupsModal(s){
   s.groupes = s.groupes || [];
   const box = h('div');
-  const draw = () => box.replaceChildren(
+  const draw = () => setKids(box, 
     h('p',{class:'muted',style:{marginTop:0}},'Regroupez des équipes (par exemple « Débutants » et « Confirmés ») pour leur donner d\'un coup la même série d\'exercices. Une équipe appartient à un seul groupe.'),
     ...s.groupes.map(g => h('div',{class:'card grp'},
       h('div',{class:'row'}, h('span',{class:'gdot',style:{background:gColor(g)}}),
@@ -916,7 +917,7 @@ function applySeries(s, g){
   if (!src.length) return modal('Aucune série', h('p',null,'Créez une série dans Bibliothèque → Séries, ou reliez des exercices et des défis à une étape de progression.'), [{l:'Annuler'},{l:'Créer une série',cls:'pri',fn:()=>{ U.view='biblio'; U.libType='parcours'; render(); editItem('parcours',null); }}]);
   const o = {k:src[0].k, mode:'add'};
   const prev = h('ol',{style:{margin:'6px 0',paddingLeft:'22px',fontSize:'13px'}});
-  const upd = () => { const so = src.find(x=>x.k===o.k); prev.replaceChildren(...so.items.map(r=>h('li',null, TYPES[r.t].icon+' '+libTitle(r.t,r.id)))); };
+  const upd = () => { const so = src.find(x=>x.k===o.k); setKids(prev, ...so.items.map(r=>h('li',null, TYPES[r.t].icon+' '+libTitle(r.t,r.id)))); };
   upd();
   modal('🧭 Donner une série'+(g?' — '+g.nom:' — toutes les équipes'), h('div',null,
     h('div',{class:'fld'}, h('span',null,'Série'), h('select',{value:o.k,onchange:e=>{ o.k = e.target.value; upd(); }}, src.map(x=>h('option',{value:x.k},x.l)))),
@@ -932,7 +933,7 @@ function applySeries(s, g){
 }
 function editTask(t, s){
   const it = refItem(t); const f = {statut:t.statut, note:t.note||'', titre:t.titre||''};
-  const stRow = h('div',{class:'st'}); const drawSt = () => stRow.replaceChildren(...ST_ORDER.map(k => h('button',{type:'button',style:f.statut===k?{background:ST[k].c,color:'#fff',borderColor:ST[k].c}:{},onclick:()=>{f.statut=k;drawSt();}},ST[k].l))); drawSt();
+  const stRow = h('div',{class:'st'}); const drawSt = () => setKids(stRow, ...ST_ORDER.map(k => h('button',{type:'button',style:f.statut===k?{background:ST[k].c,color:'#fff',borderColor:ST[k].c}:{},onclick:()=>{f.statut=k;drawSt();}},ST[k].l))); drawSt();
   const loc = findTask(s, t.id);
   const body = h('div',null,
     it ? h('div',{class:'card',style:{marginBottom:'10px',boxShadow:'none'}},
@@ -1280,7 +1281,7 @@ function taskView(t){
 function taskDetail(v, H){
   let shown = Math.min(v.hints||0, v.aides.length);
   const box = h('div');
-  const drawA = () => box.replaceChildren(...v.aides.slice(0,shown).map((a,i)=>h('div',{class:'aide'},h('b',null,'💡 Coup de pouce '+(i+1)+' : '),a)),
+  const drawA = () => setKids(box, ...v.aides.slice(0,shown).map((a,i)=>h('div',{class:'aide'},h('b',null,'💡 Coup de pouce '+(i+1)+' : '),a)),
     ...(shown < v.aides.length && v.statut!=='reussi' ? [h('button',{onclick:()=>{ shown++; H.hint(shown); drawA(); }},'💡 Voir un coup de pouce ('+(shown+1)+'/'+v.aides.length+')')] : []));
   drawA();
   const st = v.statut;
@@ -1530,7 +1531,7 @@ function applyTheme(){
 function settingsModal(){
   const box = h('div',{class:'thopts'});
   const draw = () => { const cur = localStorage.getItem(THEME_KEY) || 'classique';
-    box.replaceChildren(...THEMES_UI.map(([k,l,d,cols]) => h('button',{type:'button',class:'thopt'+(k===cur?' on':''),'aria-pressed':String(k===cur),onclick:()=>{ localStorage.setItem(THEME_KEY,k); applyTheme(); draw(); }},
+    setKids(box, ...THEMES_UI.map(([k,l,d,cols]) => h('button',{type:'button',class:'thopt'+(k===cur?' on':''),'aria-pressed':String(k===cur),onclick:()=>{ localStorage.setItem(THEME_KEY,k); applyTheme(); draw(); }},
       h('span',{class:'sw'}, cols.map(c=>h('i',{style:{background:c}}))), h('b',null,l), h('small',null,d)))); };
   draw();
   const prof = !document.body.classList.contains('stu') && !isLocked() && U.mode!=='projo' && document.querySelector('nav');
@@ -1563,8 +1564,8 @@ function lockScreen(){
     if (await checkPw(inp.value)){ badTries = 0; sessionStorage.setItem(UNLOCK_KEY,'1'); lastActivity = Date.now(); startProf(); }
     else { badTries++; inp.value = ''; inp.focus(); msg.textContent = 'Mot de passe incorrect.'; }
   };
-  document.getElementById('hd').replaceChildren(h('h1',null,'🤖 Robotique'), h('span',{class:'sp',style:{flex:1}}), h('span',{class:'ver'},APP_VERSION));
-  document.getElementById('main').replaceChildren(h('div',{class:'empty card',style:{maxWidth:'420px'}},
+  setKids(document.getElementById('hd'), h('h1',null,'🤖 Robotique'), h('span',{class:'sp',style:{flex:1}}), h('span',{class:'ver'},APP_VERSION));
+  setKids(document.getElementById('main'), h('div',{class:'empty card',style:{maxWidth:'420px'}},
     h('div',{style:{fontSize:'44px'}},'🔒'), h('h2',null,'Espace prof'),
     h('p',{class:'muted'},'Saisissez votre mot de passe.'),
     h('div',{class:'row',style:{justifyContent:'center'}}, inp, h('button',{class:'pri',onclick:go},'Déverrouiller')), msg,
@@ -1595,13 +1596,13 @@ function lockSection(){
     if (!D.profLock){
       const a = pwField('Nouveau mot de passe'), b = pwField('Confirmer');
       a.autocomplete = b.autocomplete = 'new-password';
-      wrap.replaceChildren(h('div',{class:'sub'},'Accès prof'),
+      setKids(wrap, h('div',{class:'sub'},'Accès prof'),
         h('p',{style:{fontSize:'13px',margin:'4px 0'}},'⚠ Aucun mot de passe : n\'importe qui peut ouvrir l\'espace prof sur cet ordinateur.'),
         h('div',{class:'row'}, a, b, h('button',{class:'pri',onclick:async()=>{
           if (a.value.length<4) return toast('4 caractères minimum'); if (a.value!==b.value) return toast('Les deux saisies diffèrent');
           const L = await makeLock(a.value); sessionStorage.setItem(UNLOCK_KEY,'1'); commit(()=>{ D.profLock = L; if (D.lockDelay==null) D.lockDelay = 20; }, true); toast('Espace prof protégé'); draw(); }},'🔒 Protéger')));
     } else {
-      wrap.replaceChildren(h('div',{class:'sub'},'Accès prof'),
+      setKids(wrap, h('div',{class:'sub'},'Accès prof'),
         h('p',{style:{fontSize:'13px',margin:'4px 0'}},'🔒 Protégé par mot de passe. Il est demandé à l\'ouverture de l\'espace prof et pour quitter le mode élève.'),
         h('div',{class:'row'}, h('span',{style:{fontSize:'13px'}},'Verrouillage automatique après'),
           h('select',{value:String(D.lockDelay||0),onchange:e=>commit(()=>D.lockDelay=+e.target.value,true)}, [[0,'jamais'],[5,'5 min'],[10,'10 min'],[20,'20 min'],[45,'45 min']].map(([v,l])=>h('option',{value:String(v)},l))),
@@ -1630,8 +1631,8 @@ setInterval(() => {
 const ROLE_KEY = 'robotique-role';
 function splash(){
   let remember = false;
-  document.getElementById('hd').replaceChildren(h('h1',null,'🤖 Robotique'), h('span',{class:'sp',style:{flex:1}}), h('button',{title:'Paramètres',onclick:settingsModal},'⚙'), h('span',{class:'ver'},APP_VERSION));
-  document.getElementById('main').replaceChildren(h('div',{class:'splash'},
+  setKids(document.getElementById('hd'), h('h1',null,'🤖 Robotique'), h('span',{class:'sp',style:{flex:1}}), h('button',{title:'Paramètres',onclick:settingsModal},'⚙'), h('span',{class:'ver'},APP_VERSION));
+  setKids(document.getElementById('main'), h('div',{class:'splash'},
     h('h2',null,'Atelier robotique'), h('p',{class:'muted'},'Qui utilise cet ordinateur ?'),
     h('div',{class:'choices'},
       h('button',{onclick:()=>{ if (remember) localStorage.setItem(ROLE_KEY,'prof'); startProf(); }}, h('span',{class:'ic'},'👩‍🏫'), h('b',null,'Mode prof'), h('span',{class:'d'},'Préparer les séances, former les équipes, suivre la progression.')),
@@ -1670,7 +1671,7 @@ function carnetApp(){
   const stars = n => '★'.repeat(n) + '☆'.repeat(3-n);
   history.replaceState(null,'',location.pathname+'#carnet');
   function header(){
-    hd.replaceChildren(h('h1',null,'📒 Carnet d\'exercices'), C.cur ? h('b',{style:{fontSize:'18px'}},C.cur) : null, h('span',{class:'sp',style:{flex:1}}),
+    setKids(hd, h('h1',null,'📒 Carnet d\'exercices'), C.cur ? h('b',{style:{fontSize:'18px'}},C.cur) : null, h('span',{class:'sp',style:{flex:1}}),
       h('button',{title:'Paramètres',onclick:settingsModal},'⚙'),
       C.cur ? h('button',{onclick:()=>{ C.cur=null; keep(); view={monde:null,defi:null}; draw(); }},'Changer d\'équipe') : null,
       h('button',{onclick:()=>{ history.replaceState(null,'',location.pathname+'#eleve'); studentApp(); }},'📡 Séance en direct'),
@@ -1724,7 +1725,7 @@ function carnetApp(){
     const check = async () => { const v = inp.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
       if (!v) return; const hh = await sha16('robotique-carnet:'+d.id+':'+v), hm = await sha16('robotique-carnet:MAITRE:'+v);
       if (hh===d.h || hm===CARNET.maitre){ prof().done[d.id] = Date.now(); keep();
-        m.replaceChildren(h('div',{class:'cn-wrap',style:{textAlign:'center',marginTop:'40px'}}, h('div',{class:'cn-bravo'},'🎉 BRAVO ! 🎉'), h('p',{style:{fontSize:'20px'}},d.dec ? 'Fiche découverte réussie.' : 'Exercice '+d.n+' « '+d.titre+' » réussi.'),
+        setKids(m, h('div',{class:'cn-wrap',style:{textAlign:'center',marginTop:'40px'}}, h('div',{class:'cn-bravo'},'🎉 BRAVO ! 🎉'), h('p',{style:{fontSize:'20px'}},d.dec ? 'Fiche découverte réussie.' : 'Exercice '+d.n+' « '+d.titre+' » réussi.'),
           i+1 < mo.defis.length ? h('button',{class:'pri big',onclick:()=>{ view.defi=i+1; draw(); }},'Activité suivante →') : h('p',{class:'cn-t',style:{fontSize:'22px',color:mo.couleur}},'🏆 Composant terminé !'),
           h('p',null, h('button',{onclick:()=>{ view.defi=null; draw(); }},'Retour au composant'))));
       } else { msg.textContent = 'Code incorrect. Montrez votre réussite aux coachs.'; inp.value=''; inp.focus(); } };
@@ -1776,7 +1777,7 @@ function studentApp(){
   function statusOf(t){ return P.loc.done[t.i] && P.loc.done[t.i]===t.s ? 'avalider' : t.s; } // « j'ai réussi » envoyé, pas encore reçu par le prof
   function draw(){
     const q = teamOf();
-    hd.replaceChildren(h('h1',null,'🤖 Robotique'), q ? h('b',{style:{fontSize:'18px'}},q.n) : null, h('span',{class:'sp'}),
+    setKids(hd, h('h1',null,'🤖 Robotique'), q ? h('b',{style:{fontSize:'18px'}},q.n) : null, h('span',{class:'sp'}),
       h('button',{title:'Paramètres',onclick:settingsModal},'⚙'),
       h('button',{title:'Carnet d\'exercices (sans connexion)',onclick:()=>{ if (S.es) S.es.close(); carnetApp(); }},'📒 Carnet'),
       h('button',{title:'Mémo des blocs mBlock',onclick:()=>blocsModal()},'🧱 Blocs'),
