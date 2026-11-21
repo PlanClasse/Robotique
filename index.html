@@ -224,6 +224,9 @@ button.bk.on{border-color:#22C55E;background:#DCFCE7}
 .cn-mondes{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
 .cn-monde{text-align:left;border:3px solid var(--mc);border-radius:18px;background:var(--sur);padding:14px;display:flex;flex-direction:column;gap:6px;box-shadow:0 5px 0 var(--mc)}
 .cn-monde:hover{transform:translateY(-2px)}
+.cn-monde.lock{opacity:.55;box-shadow:0 5px 0 #CBD5E1;border-color:#CBD5E1}
+.cn-monde.lock:hover{transform:none}
+.cn-reprise{font-family:Bungee,'Arial Black',sans-serif;font-size:22px;letter-spacing:.08em;background:#F1F5F9;border:2px dashed #94A3B8;border-radius:10px;padding:8px 14px;display:inline-block;user-select:all}
 .cn-monde .n{font-family:Bungee,'Arial Black',sans-serif;color:var(--mc);font-size:13px}
 .cn-monde b{font-size:18px}
 .cn-bar{height:10px;border-radius:5px;background:#E5E7EB;overflow:hidden}.cn-bar i{display:block;height:100%;background:var(--mc)}
@@ -354,7 +357,7 @@ body.th-bd{--bg:#FFF6DA;--sur:#FFFFFF;--brd:#111111;--tx:#111111;--mut:#44403C;-
 <main id="main"></main>
 <script>
 'use strict';
-const APP_VERSION = 'v1.10.1';
+const APP_VERSION = 'v1.11.0';
 const KEY = 'robotique-data-v1', UIKEY = 'robotique-ui-v1';
 
 /* ─────────────── Utilitaires ─────────────── */
@@ -1668,12 +1671,27 @@ function carnetApp(){
   const prof = () => C.profils[C.cur];
   const doneIn = mo => mo.defis.filter(d=>prof().done[d.id]).length;
   const unlocked = (mo, i) => i===0 || !!prof().done[mo.defis[i-1].id] || !!prof().done[mo.defis[i].id];
+  const fini = mo => mo.defis.every(d=>prof().done[d.id]);
+  const mOpen = mi => mi===0 || !!(prof().open||{})[CARNET.mondes[mi].id] || fini(CARNET.mondes[mi-1]) || doneIn(CARNET.mondes[mi])>0;
+  // Code de reprise : nombre d'activités réussies (dans l'ordre) + ouverture par code prof, pour chaque composant
+  const RA = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  const lead = mo => { let n = 0; while (n < mo.defis.length && prof().done[mo.defis[n].id]) n++; return n; };
+  const repriseOf = async () => { const body = CARNET.mondes.map(mo => RA[lead(mo) + ((prof().open||{})[mo.id] ? 16 : 0)]).join('');
+    const ck = await sha16('robotique-reprise:'+body); return (body + RA[parseInt(ck.slice(0,2),16)%32] + RA[parseInt(ck.slice(2,4),16)%32]).replace(/(.{4})(?=.)/g,'$1-'); };
+  async function readReprise(code){ const c = code.toUpperCase().replace(/O/g,'0').replace(/[IL]/g,'1').replace(/[^0-9A-Z]/g,''); const n = CARNET.mondes.length;
+    if (c.length!==n+2) return null; const body = c.slice(0,n), ck = await sha16('robotique-reprise:'+body);
+    if (c.slice(n)!==RA[parseInt(ck.slice(0,2),16)%32] + RA[parseInt(ck.slice(2,4),16)%32]) return null;
+    const P = {done:{}, open:{}}; CARNET.mondes.forEach((mo,mi) => { const v = RA.indexOf(body[mi]); if (v<0) return; if (v>=16) P.open[mo.id] = 1; mo.defis.slice(0, v%16).forEach(d => P.done[d.id] = Date.now()); });
+    return P; }
   const stars = n => '★'.repeat(n) + '☆'.repeat(3-n);
   history.replaceState(null,'',location.pathname+'#carnet');
   function header(){
     setKids(hd, h('h1',null,'📒 Carnet d\'exercices'), C.cur ? h('b',{style:{fontSize:'18px'}},C.cur) : null, h('span',{class:'sp',style:{flex:1}}),
       h('button',{title:'Paramètres',onclick:settingsModal},'⚙'),
       C.cur ? h('button',{onclick:()=>{ C.cur=null; keep(); view={monde:null,defi:null}; draw(); }},'Changer d\'équipe') : null,
+      C.cur ? h('button',{title:'Code à noter pour retrouver la progression sur un autre ordinateur',onclick:async()=>modal('🔑 Code de reprise de « '+C.cur+' »', h('div',{style:{textAlign:'center'}},
+        h('p',null,'Notez ce code (cahier, fiche de l\'équipe). Il permet de retrouver votre progression si cet ordinateur est effacé ou si vous changez de poste.'),
+        h('div',{class:'cn-reprise'}, await repriseOf()), h('p',{class:'muted',style:{fontSize:'13px'}},'Il change à chaque activité réussie : notez toujours le dernier.')), [{l:'OK',cls:'pri'}])},'🔑 Code de reprise') : null,
       h('button',{onclick:()=>{ history.replaceState(null,'',location.pathname+'#eleve'); studentApp(); }},'📡 Séance en direct'),
       h('button',{title:'Mémo des blocs mBlock',onclick:()=>blocsModal()},'🧱 Blocs'), h('a',{href:location.pathname,class:'ver',style:{marginLeft:'8px'},onclick:e=>{ e.preventDefault(); localStorage.removeItem(ROLE_KEY); history.replaceState(null,'',location.pathname); location.reload(); }},'accueil'));
   }
@@ -1693,16 +1711,34 @@ function carnetApp(){
       h('p',{style:{fontSize:'18px'}},'Qui êtes-vous ?'),
       names.length ? h('div',{class:'teams',style:{marginBottom:'18px'}}, names.map(n=>h('button',{onclick:()=>{ C.cur=n; keep(); draw(); }}, n))) : null,
       h('div',{class:'row',style:{justifyContent:'center'}}, h('input',{type:'text',placeholder:'Nouvelle équipe (ex. 6eB équipe 3)',style:{fontSize:'18px',minWidth:'280px'},oninput:e=>v=e.target.value,onkeydown:e=>{ if(e.key==='Enter') go(); }}), h('button',{class:'pri big',onclick:go},'C\'est parti !')),
-      h('p',{class:'muted',style:{fontSize:'13px',marginTop:'16px'}},'La progression est enregistrée sur cet ordinateur. Pas de nom ni de prénom : seulement le nom de l\'équipe.')));
+      h('p',{class:'muted',style:{fontSize:'13px',marginTop:'16px'}},'La progression est enregistrée sur cet ordinateur. Pas de nom ni de prénom : seulement le nom de l\'équipe.'),
+      h('p',null, h('button',{onclick:reprendre},'🔑 Reprendre avec un code de reprise'))));
+  }
+  function reprendre(){
+    let nom = '', code = '';
+    modal('🔑 Reprendre ma progression', h('div',null,
+      h('div',{class:'fld'}, h('span',null,'Nom de l\'équipe'), h('input',{type:'text',oninput:e=>nom=e.target.value})),
+      h('div',{class:'fld'}, h('span',null,'Code de reprise'), h('input',{type:'text',style:{textTransform:'uppercase',letterSpacing:'.08em'},oninput:e=>code=e.target.value}))),
+      [{l:'Annuler'},{l:'Reprendre',cls:'pri',fn:()=>{ nom = nom.trim().replace(/\s+/g,' ').slice(0,40); if (!nom){ toast('Tapez le nom de votre équipe'); return false; }
+        readReprise(code).then(P => { if (!P) return toast('Code de reprise incorrect'); C.profils[nom] = P; C.cur = nom; keep(); view={monde:null,defi:null}; draw(); toast('Progression retrouvée'); }); }}]);
   }
   function drawMondes(){
     const tot = CARNET.mondes.reduce((a,mo)=>a+mo.defis.length,0), ok = CARNET.mondes.reduce((a,mo)=>a+doneIn(mo),0);
     m.append(h('div',{class:'cn-wrap'},
       h('div',{class:'row'}, h('div',{class:'cn-t',style:{fontSize:'26px',flex:1}},'Choisis ton composant'), h('span',{class:'cn-t',style:{color:'#16A34A'}}, ok+' / '+tot+' activités réussies')),
       h('div',{class:'cn-mondes'}, CARNET.mondes.map((mo,mi) => { const d = doneIn(mo);
-        return h('button',{class:'cn-monde',style:{'--mc':mo.couleur},onclick:()=>{ view={monde:mi,defi:null}; draw(); }},
+        const op = mOpen(mi);
+        return h('button',{class:'cn-monde'+(op?'':' lock'),style:{'--mc':mo.couleur},onclick:()=>{ if (op){ view={monde:mi,defi:null}; draw(); } else ouvrir(mi); }},
           h('span',{class:'n'},'COMPOSANT '+(mi+1)), h('b',null,mo.titre), h('span',{class:'muted',style:{fontSize:'13px'}},mo.sous),
-          h('div',{class:'cn-bar'}, h('i',{style:{width:Math.round(100*d/mo.defis.length)+'%'}})), h('span',{style:{fontSize:'13px',fontWeight:800}}, d+' / '+mo.defis.length + (d===mo.defis.length?' 🏆':''))); }))));
+          h('div',{class:'cn-bar'}, h('i',{style:{width:Math.round(100*d/mo.defis.length)+'%'}})), h('span',{style:{fontSize:'13px',fontWeight:800}}, op ? d+' / '+mo.defis.length + (d===mo.defis.length?' 🏆':'') : '🔒 Termine d\'abord le composant '+mi)); }))));
+  }
+  function ouvrir(mi){
+    const mo = CARNET.mondes[mi]; let v = '';
+    modal('🔒 Composant '+(mi+1)+' : '+mo.titre, h('div',null,
+      h('p',null,'Ce composant s\'ouvre quand toutes les activités du composant '+mi+' ('+CARNET.mondes[mi-1].titre+') sont réussies.'),
+      h('div',{class:'fld'}, h('span',null,'Code prof pour l\'ouvrir maintenant'), h('input',{type:'password',autocomplete:'off',oninput:e=>v=e.target.value,onkeydown:e=>{ if(e.key==='Enter') e.target.closest('.modal').querySelector('.mf .pri').click(); }}))),
+      [{l:'Fermer'},{l:'Ouvrir',cls:'pri',fn:()=>{ const c = v.toUpperCase().replace(/[^A-Z0-9]/g,'');
+        sha16('robotique-carnet:MAITRE:'+c).then(hm => { if (hm!==CARNET.maitre) return toast('Code incorrect'); prof().open = prof().open||{}; prof().open[mo.id] = 1; keep(); view={monde:mi,defi:null}; draw(); toast('Composant ouvert'); }); }}]);
   }
   function drawMonde(){
     const mo = CARNET.mondes[view.monde];
