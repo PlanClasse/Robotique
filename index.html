@@ -187,6 +187,17 @@ button.bk.on{border-color:#22C55E;background:#DCFCE7}
 .modal.wide{width:min(980px,100%)}
 .tcodes{display:flex;flex-wrap:wrap;gap:6px}
 .bdrow{display:flex;gap:8px;align-items:center;margin:4px 0}
+.bdrow.off img,.bdrow.off input[type=text]{opacity:.35}
+.bdon input{width:18px;height:18px}
+.mcat h3 .x{font-weight:400}
+button.bk.hid{opacity:.35}
+.cncfg td,.cncfg th{text-align:center;padding:3px 6px;font-size:13px;white-space:nowrap}
+.cncfg th.g{border-bottom:3px solid}
+.cncfg .cc{width:30px;height:26px;padding:0;border-radius:6px;border:1px solid var(--brd);background:var(--sur);cursor:pointer;box-shadow:none;font-weight:700}
+.cncfg .cc.on{background:#DCFCE7;color:#166534;border-color:#86EFAC}
+.cncfg .cc.off{background:#FEE2E2;color:#991B1B;border-color:#FCA5A5}
+.cncfg .cc.inh{opacity:.5}
+.cncfg td.l{text-align:left}
 .bdrow img{flex:none;max-width:300px}
 .bdrow input{flex:1;min-width:0}
 .tcode{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--brd);border-left:5px solid;border-radius:8px;padding:4px 10px}
@@ -365,7 +376,7 @@ body.th-bd{--bg:#FFF6DA;--sur:#FFFFFF;--brd:#111111;--tx:#111111;--mut:#44403C;-
 <main id="main"></main>
 <script>
 'use strict';
-const APP_VERSION = 'v1.14.0';
+const APP_VERSION = 'v1.15.0';
 const KEY = 'robotique-data-v1', UIKEY = 'robotique-ui-v1';
 
 /* ─────────────── Utilitaires ─────────────── */
@@ -589,35 +600,42 @@ const BCAT = () => CARNET.cats;
 function blocImg(id, k=0.7){ const b = BLOCS[id]; if (!b) return null; return h('img',{class:'bloc',src:'blocs/'+id+'.png',alt:b[1],title:b[1],draggable:'false',style:{width:Math.round(b[2]*k)+'px'}}); }
 const BDKEY = 'robotique-bdesc';
 const bdOvr = () => { if (!document.body.classList.contains('stu')) return D.blocDesc || {}; try { return JSON.parse(localStorage.getItem(BDKEY)||'{}'); } catch(_){ return {}; } };
+const BHKEY = 'robotique-bhide';
+const bhidden = () => { if (!document.body.classList.contains('stu')) return D.blocHide || {}; try { return JSON.parse(localStorage.getItem(BHKEY)||'{}'); } catch(_){ return {}; } };
 const bdesc = (id, o) => { o = o || bdOvr(); return (o[id] != null ? o[id] : BDESC[id]) || ''; };
 function blocZoom(id){ modal(BLOCS[id][1], h('div',{style:{textAlign:'center'}}, (im => { if (im) im.style.margin = '0 auto'; return im; })(blocImg(id,1.3)), bdesc(id) ? h('p',{style:{fontSize:'17px',margin:'14px 0 0'}}, bdesc(id)) : null), []); }
 const MEMO_HIDE = ['suiveurDef'];   // vignettes de programme complet : pas dans le mémo
 function blocDescEditor(){
-  const o = {...(D.blocDesc||{})}; let q = '';
+  const o = {...(D.blocDesc||{})}, hid = {...(D.blocHide||{})}; let q = '';
   const list = h('div');
   const draw = () => { const nq = norm(q);
     setKids(list, Object.entries(BCAT()).map(([c,v]) => { const ids = Object.keys(BLOCS).filter(id => BLOCS[id][0]===c && !MEMO_HIDE.includes(id) && (!nq || norm(BLOCS[id][1]+' '+bdesc(id,o)).includes(nq)));
-      return ids.length ? h('div',{class:'mcat'}, h('h3',null, h('img',{src:v.i,alt:''}), v.l),
-        ids.map(id => h('div',{class:'bdrow'}, blocImg(id,0.45),
+      const all = on => { ids.forEach(id => { if (on) delete hid[id]; else hid[id] = 1; }); draw(); };
+      return ids.length ? h('div',{class:'mcat'}, h('h3',null, h('img',{src:v.i,alt:''}), v.l, h('span',{style:{flex:1}}),
+          h('button',{type:'button',class:'x',style:{fontSize:'12px'},onclick:()=>all(true)},'Tout montrer'), h('button',{type:'button',class:'x',style:{fontSize:'12px'},onclick:()=>all(false)},'Tout masquer')),
+        ids.map(id => h('div',{class:'bdrow'+(hid[id]?' off':'')},
+          h('label',{class:'bdon',title:'Visible dans le mémo des élèves'}, h('input',{type:'checkbox',checked:!hid[id],onchange:e=>{ if (e.target.checked) delete hid[id]; else hid[id] = 1; e.target.closest('.bdrow').classList.toggle('off', !e.target.checked); }})),
+          blocImg(id,0.45),
           h('input',{type:'text',value:bdesc(id,o),placeholder:BDESC[id]||'Description',oninput:e=>{ const x = e.target.value; if (x===(BDESC[id]||'')) delete o[id]; else o[id] = x; }}),
           h('button',{type:'button',class:'x',title:'Revenir au texte d\'origine',onclick:()=>{ delete o[id]; draw(); }},'↺')))) : null; })); };
   draw();
-  modal('🧱 Descriptions des blocs', h('div',null,
+  modal('🧱 Blocs du mémo', h('div',null,
     h('div',{class:'memohd'}, h('input',{type:'search',placeholder:'Chercher un bloc…',oninput:e=>{q=e.target.value;draw();}})),
-    h('p',{class:'muted',style:{margin:'0 0 6px'}},'Une ligne courte, affichée quand on clique sur un bloc dans le mémo. Les postes élèves reçoivent vos textes pendant une séance en direct. ↺ remet le texte d\'origine.'), list),
-    [{l:'Annuler'},{l:'Enregistrer',cls:'pri',fn:()=>{ commit(()=>{ D.blocDesc = o; }); toast('Descriptions enregistrées'); }}]);
+    h('p',{class:'muted',style:{margin:'0 0 6px'}},'La case cochée montre le bloc dans le mémo des élèves (décochée : il leur est caché). La ligne s\'affiche quand on clique sur un bloc. Les postes élèves reçoivent vos choix pendant une séance en direct. ↺ remet le texte d\'origine.'), list),
+    [{l:'Annuler'},{l:'Enregistrer',cls:'pri',fn:()=>{ commit(()=>{ D.blocDesc = o; D.blocHide = hid; }); toast('Blocs enregistrés'); }}]);
   const md = document.querySelectorAll('.modal'); md[md.length-1].classList.add('wide');
 }
 const blocsRow = (ids, k) => ids && ids.length ? h('div',{class:'blocsrow'}, ids.map(id=>blocImg(id,k))) : null;
 function blocsModal(opt={}){
   const sel = opt.pick ? new Set(opt.pick) : null; let q = '', cat = '';
+  const stuMode = document.body.classList.contains('stu'), HID = bhidden();
   const list = h('div'), cnt = h('span',{class:'muted'});
   const count = () => { if (sel) cnt.textContent = sel.size+' bloc(s) choisi(s)'; };
   const draw = () => { const nq = norm(q);
     setKids(list, ...Object.entries(BCAT()).filter(([c])=>!cat||c===cat).map(([c,v]) => {
-      const ids = Object.keys(BLOCS).filter(id => BLOCS[id][0]===c && (sel || !MEMO_HIDE.includes(id)) && (!nq || norm(BLOCS[id][1]+' '+bdesc(id)).includes(nq) || norm(v.l).includes(nq)));
+      const ids = Object.keys(BLOCS).filter(id => BLOCS[id][0]===c && (sel || !MEMO_HIDE.includes(id)) && (sel || !stuMode || !HID[id]) && (!nq || norm(BLOCS[id][1]+' '+bdesc(id)).includes(nq) || norm(v.l).includes(nq)));
       return ids.length ? h('div',{class:'mcat'}, h('h3',null, h('img',{src:v.i,alt:''}), v.l, h('span',{class:'muted',style:{fontWeight:400}},'('+ids.length+')')),
-        h('div',{class:'mgrid'}, ids.map(id => { const b = h('button',{type:'button',class:'bk'+(sel&&sel.has(id)?' on':''),title:BLOCS[id][1]+(bdesc(id)?'\n'+bdesc(id):''),onclick:()=>{
+        h('div',{class:'mgrid'}, ids.map(id => { const b = h('button',{type:'button',class:'bk'+(sel&&sel.has(id)?' on':'')+(!sel&&HID[id]?' hid':''),title:BLOCS[id][1]+(bdesc(id)?'\n'+bdesc(id):''),onclick:()=>{
             if (!sel) return blocZoom(id);
             if (sel.has(id)) sel.delete(id); else sel.add(id); b.classList.toggle('on'); count(); }}, blocImg(id,0.6)); return b; }))) : null; }).filter(Boolean));
     if (!list.children.length) list.append(h('p',{class:'muted'},'Aucun bloc ne correspond.')); };
@@ -1120,6 +1138,38 @@ function vHistorique(m){
 }
 
 /* ─────────────── Vue Progression ─────────────── */
+function carnetCfgCard(c){
+  const ses = seancesOf(c.id); const s = byId(ses, U.seanceId) || ses[ses.length-1];
+  const cfg = cfgOf(c.id); const ord = cfgOrder(cfg); const mo = id => CARNET.mondes.find(x=>x.id===id);
+  const box = h('div',{class:'wrap card',style:{marginBottom:'14px'}});
+  const head = h('div',{class:'row'}, h('h3',{style:{margin:0,flex:1}},'📒 Carnet : composants ouverts aux équipes'),
+    cfg ? h('button',{onclick:()=>confirmBox('Supprimer le réglage ? Toutes les équipes retrouvent tous les composants, dans l\'ordre d\'origine.', ()=>commit(()=>{ delete D.carnetCfg[c.id]; }), 'Supprimer')},'Tout ouvrir (sans réglage)') : null);
+  if (!cfg){ setKids(box, head, h('p',{class:'muted'},'Aucun réglage : chaque équipe voit tous les composants, dans l\'ordre du carnet, et doit terminer un composant pour ouvrir le suivant.'),
+      h('button',{class:'pri',onclick:()=>commit(()=>{ D.carnetCfg[c.id] = {ordre:CARNET.mondes.map(x=>x.id), groupes:{}, sans:[CARNET.mondes[0].id], equipes:{}}; })},'⚙ Régler les composants par groupe et par équipe'));
+    return box; }
+  cfg.groupes = cfg.groupes || {}; cfg.equipes = cfg.equipes || {};
+  const groups = s ? (s.groupes||[]) : []; const teamsOf = g => s ? s.equipes.filter(q => g ? g.equipes.includes(q.id) : !groupOf(s,q)) : [];
+  const cols = [...groups.map(g=>({g, nom:g.nom, col:gColor(g), teams:teamsOf(g)})), {g:null, nom:groups.length?'Sans groupe':'Toutes les équipes', col:'#94A3B8', teams:teamsOf(null)}];
+  const gSet = col => col.g ? (cfg.groupes[col.nom] = cfg.groupes[col.nom] || []) : (cfg.sans = cfg.sans || []);
+  const move = (i,j) => { if (j<0 || j>=ord.length) return; commit(()=>{ const o = cfgOrder(cfg); [o[i],o[j]] = [o[j],o[i]]; cfg.ordre = o; }); };
+  const gCell = (col, id) => { const on = (col.g ? cfg.groupes[col.nom]||[] : cfg.sans||[]).includes(id);
+    return h('td',null, h('button',{class:'cc'+(on?' on':''),title:(on?'Ouvert':'Fermé')+' pour '+col.nom,onclick:()=>commit(()=>{ const a = gSet(col); const i = a.indexOf(id); if (i<0) a.push(id); else a.splice(i,1); })}, on?'✓':'·')); };
+  const tCell = (q, id) => { const ov = (cfg.equipes[q.nom]||{})[id]; const eff = cfgActive(cfg, s, q).has(id);
+    return h('td',null, h('button',{class:'cc'+(ov===1?' on':ov===0?' off':' inh'+(eff?' on':'')),title:ov==null?'Comme le groupe (clic : forcer ouvert)':ov?'Forcé ouvert (clic : forcer fermé)':'Forcé fermé (clic : comme le groupe)',
+      onclick:()=>commit(()=>{ const e = cfg.equipes[q.nom] = cfg.equipes[q.nom] || {}; if (e[id]==null) e[id] = 1; else if (e[id]===1) e[id] = 0; else delete e[id]; if (!Object.keys(e).length) delete cfg.equipes[q.nom]; })}, ov===1?'✓':ov===0?'✗':eff?'✓':'·')); };
+  setKids(box, head,
+    h('p',{class:'muted',style:{margin:'6px 0'}}, (s ? 'Groupes et équipes de la séance « '+(s.titre||fmtDate(s.date))+' ». ' : '')+'Colonne d\'un groupe : ✓ ouvre le composant à ses équipes. Case d\'une équipe : pâle = comme son groupe, clic pour forcer ✓ ouvert ou ✗ fermé. Les composants ouverts se font dans l\'ordre des lignes (↑ ↓) : il faut finir l\'un pour passer au suivant. Les équipes reçoivent ce réglage en ouvrant le carnet depuis leur page de séance en direct.'),
+    h('div',{style:{overflowX:'auto'}}, h('table',{class:'prog cncfg'},
+      h('thead',null,
+        h('tr',null, h('th',{rowspan:2},'Ordre'), h('th',{class:'r',rowspan:2},'Composant'), cols.map(col => h('th',{class:'g',colspan:1+col.teams.length,style:{borderBottomColor:col.col}}, col.nom))),
+        h('tr',null, cols.map(col => [h('th',{style:{fontSize:'11px'}},'groupe'), col.teams.map(q=>h('th',{style:{fontSize:'11px',fontWeight:400}},q.nom))]))),
+      h('tbody',null, ord.map((id,i) => h('tr',null,
+        h('td',{style:{whiteSpace:'nowrap'}}, h('button',{class:'x',title:'Monter',onclick:()=>move(i,i-1)},'↑'), h('button',{class:'x',title:'Descendre',onclick:()=>move(i,i+1)},'↓')),
+        h('td',{class:'l'}, h('b',null,(i+1)+'. '), mo(id).titre, h('span',{class:'muted',style:{fontSize:'11px'}},' (C'+(CARNET.mondes.indexOf(mo(id))+1)+')')),
+        cols.map(col => [gCell(col,id), col.teams.map(q=>tCell(q,id))])))))),
+    !s ? h('p',{class:'muted'},'Créez une séance avec des équipes (et des groupes) pour les régler une par une.') : null);
+  return box;
+}
 function vProgression(m){
   const c = curClasse(); if (!c) return needClasse(m);
   const steps = D.lib.etapes; const els = elevesOf(c.id);
@@ -1132,6 +1182,7 @@ function vProgression(m){
         return h('tr',null, h('th',{class:'r'},n), CARNET.mondes.map((mo,i)=>{ const v = RA.indexOf(b[i]||'0'), k = v%16; tot += k;
             return h('td',{class:k===mo.defis.length?'f':'',title:mo.titre+(v>=16?' (ouvert par code prof)':'')}, (k ? k+'/'+mo.defis.length : '·')+(v>=16?' 🔓':'')); }),
           h('td',{style:{fontWeight:700}}, tot+'/'+CARNET.mondes.reduce((a,mo)=>a+mo.defis.length,0)), h('td',{class:'muted'}, new Date(CN[n].t).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}))); })))));
+  m.append(carnetCfgCard(c));
   if (!steps.length){ m.append(h('div',{class:'empty card'}, h('p',null,'Aucune étape de progression. Créez-les dans Bibliothèque → Progression, puis reliez-y vos défis et exercices.'))); return; }
   m.append(h('p',{class:'muted'},'Statut calculé à partir des tâches réussies liées à chaque étape. Cliquez une case pour le forcer (cadre foncé = choix manuel) ; un dernier clic revient au calcul automatique.'));
   const legend = h('div',{class:'row'}, Object.values(PST).map(p=>h('span',{class:'tag',style:{background:p.c,color:p.t}},p.l)));
@@ -1412,7 +1463,7 @@ function liveTick(){
 }
 function snapOf(s){
   const lib = {};
-  const st = {bd:D.blocDesc||{}, t:s.titre||'', d:s.date, q:s.equipes.map(q => ({i:q.id, n:q.nom, e:q.eleves.length, t:q.taches.map(t => {
+  const st = {bd:D.blocDesc||{}, bh:D.blocHide||{}, t:s.titre||'', d:s.date, q:s.equipes.map(q => ({i:q.id, n:q.nom, e:q.eleves.length, t:q.taches.map(t => {
     const it = refItem(t); if (it) lib[it.id] = {t:it.titre, y:t.ref.t, n:it.niveau||0, c:it.description||'', a:aidesOf(it),
       m:[...(it.materiels||[]).map(id=>libTitle('materiels',id)), ...(it.tapis||[]).map(id=>libTitle('tapis',id))], b:it.blocs||[]};
     return {i:t.id, r:it?it.id:null, x:it?null:taskTitle(t), s:t.statut, h:t.hints||0}; })}))};
@@ -1422,7 +1473,8 @@ async function publishSnap(){
   const s = liveSeance(); if (!s || !LIVE.code) return; const code = LIVE.code;
   if (s.equipes.some(q=>!q.code)) commit(()=>s.equipes.forEach(q=>{ if (!q.code) q.code = newTeamCode(); }), true);
   const {st, lib} = snapOf(s); const C = (D.carnet=D.carnet||{})[s.classeId] || {};
-  for (const q of st.q){ const eq = byId(s.equipes, q.i); q.k = await sha16('robotique-equipe:'+q.i+':'+eq.code); if (C[eq.nom]) q.c = C[eq.nom].b; }
+  const CF = cfgOf(s.classeId);
+  for (const q of st.q){ const eq = byId(s.equipes, q.i); q.k = await sha16('robotique-equipe:'+q.i+':'+eq.code); if (C[eq.nom]) q.c = C[eq.nom].b; q.g = cfgPack(CF, s, eq); }
   for (const [k, obj] of [['lib',lib],['st',st]]){ const str = JSON.stringify(obj); if (LIVE.sent[k]===str) continue;
     try { await pubChunks(code, k, str); LIVE.sent[k] = str; } catch(e){ LIVE.ok = false; refreshBadge(); } }
 }
@@ -1585,7 +1637,7 @@ function settingsModal(){
   const prof = !document.body.classList.contains('stu') && !isLocked() && U.mode!=='projo' && document.querySelector('nav');
   modal('⚙ Paramètres', h('div',null, h('div',{class:'sub',style:{marginTop:0,marginBottom:'8px'}},'Thème'), box,
     h('p',{class:'muted',style:{fontSize:'12px'}},'Le thème s\'applique tout de suite et reste mémorisé sur cet ordinateur. Chaque poste (prof, projection, élèves) peut avoir le sien.'),
-    prof ? [h('div',{class:'sub'},'Mémo des blocs'), h('button',{onclick:blocDescEditor},'🧱 Modifier les descriptions des blocs')] : null,
+    prof ? [h('div',{class:'sub'},'Mémo des blocs'), h('button',{onclick:blocDescEditor},'🧱 Blocs du mémo : visibles et descriptions')] : null,
     prof ? lockSection() : null),
     [{l:'Fermer',cls:'pri'}]);
 }
@@ -1722,6 +1774,16 @@ function cnMerge(a, b){ return CARNET.mondes.map((mo,i) => { const x = Math.max(
 function cnUnpack(body, P){ P = P || {done:{}, open:{}}; P.done = P.done||{}; P.open = P.open||{};
   CARNET.mondes.forEach((mo,mi) => { const v = RA.indexOf((body||'')[mi]); if (v<0) return; if (v>=16) P.open[mo.id] = 1; mo.defis.slice(0, v%16).forEach(d => { if (!P.done[d.id]) P.done[d.id] = Date.now(); }); });
   return P; }
+// Réglage du carnet par classe : D.carnetCfg[classeId] = {ordre:[ids], groupes:{nom:[ids]}, sans:[ids], equipes:{nom:{id:1|0}}}
+const cfgOf = cid => (D.carnetCfg = D.carnetCfg || {})[cid];
+function cfgOrder(cfg){ const ids = CARNET.mondes.map(m=>m.id); const o = (cfg && cfg.ordre || []).filter(x=>ids.includes(x)); return o.concat(ids.filter(x=>!o.includes(x))); }
+function cfgActive(cfg, s, q){
+  if (!cfg) return null; const g = s && q ? groupOf(s,q) : null;
+  const base = new Set(g ? (cfg.groupes||{})[g.nom] || [] : cfg.sans || []); const ov = (cfg.equipes||{})[q ? q.nom : ''] || {};
+  for (const [id,v] of Object.entries(ov)) if (v) base.add(id); else base.delete(id);
+  return base; }
+function cfgPack(cfg, s, q){ if (!cfg) return null; const idx = id => RA[CARNET.mondes.findIndex(m=>m.id===id)];
+  return {o: cfgOrder(cfg).map(idx).join(''), a: [...cfgActive(cfg, s, q)].map(idx).join('')}; }
 const TEAMCODE = 'ABCDEFGHJKMNPQRSTUVWXYZ';
 const newTeamCode = () => Array.from(crypto.getRandomValues(new Uint8Array(4)), x => TEAMCODE[x % TEAMCODE.length]).join('');
 async function sha16(t){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,16); }
@@ -1745,14 +1807,18 @@ function carnetApp(opt){
   const hd = document.getElementById('hd'), m = document.getElementById('main');
   let view = {monde:null, defi:null};
   const prof = () => C.profils[C.cur];
-  if (opt.team){ C.cur = opt.team; C.profils[opt.team] = cnUnpack(opt.remote||'', C.profils[opt.team] || {done:{}, open:{}}); keep(); }
+  if (opt.team){ C.cur = opt.team; C.profils[opt.team] = cnUnpack(opt.remote||'', C.profils[opt.team] || {done:{}, open:{}}); if (opt.cfg) C.profils[opt.team].cfg = opt.cfg; else delete C.profils[opt.team].cfg; keep(); }
   // Envoi au prof (séance en direct) : la progression compacte, fusionnée de son côté
   const push = () => { if (opt.code && opt.teamId) ntfyPub(opt.code, {k:'ev', a:'carnet', team:opt.teamId, b:cnPack(prof())}).catch(()=>{}); };
   if (opt.code) push();
   const doneIn = mo => mo.defis.filter(d=>prof().done[d.id]).length;
   const unlocked = (mo, i) => i===0 || !!prof().done[mo.defis[i-1].id] || !!prof().done[mo.defis[i].id];
   const fini = mo => mo.defis.every(d=>prof().done[d.id]);
-  const mOpen = mi => mi===0 || !!(prof().open||{})[CARNET.mondes[mi].id] || fini(CARNET.mondes[mi-1]) || doneIn(CARNET.mondes[mi])>0;
+  const ORD = () => { const c = prof().cfg, n = CARNET.mondes.length; const o = c && c.o ? [...c.o].map(x=>RA.indexOf(x)).filter(i=>i>=0 && i<n) : []; return o.concat(CARNET.mondes.map((_,i)=>i).filter(i=>!o.includes(i))); };
+  const actv = mi => { const c = prof().cfg; return !c || c.a==null || c.a.includes(RA[mi]); };
+  const prevOf = mi => { const seq = ORD().filter(actv), k = seq.indexOf(mi); return k>0 ? seq[k-1] : null; };
+  const mOpen = mi => { const mo = CARNET.mondes[mi]; if ((prof().open||{})[mo.id] || doneIn(mo)>0) return true; if (!actv(mi)) return false; const p = prevOf(mi); return p==null || fini(CARNET.mondes[p]); };
+  const mOpenOld = mi => mi===0 || !!(prof().open||{})[CARNET.mondes[mi].id] || fini(CARNET.mondes[mi-1]) || doneIn(CARNET.mondes[mi])>0;
   // Code de reprise : nombre d'activités réussies (dans l'ordre) + ouverture par code prof, pour chaque composant
   const repriseOf = async () => { const body = cnPack(prof());
     const ck = await sha16('robotique-reprise:'+body); return (body + RA[parseInt(ck.slice(0,2),16)%32] + RA[parseInt(ck.slice(2,4),16)%32]).replace(/(.{4})(?=.)/g,'$1-'); };
@@ -1803,16 +1869,16 @@ function carnetApp(opt){
     const tot = CARNET.mondes.reduce((a,mo)=>a+mo.defis.length,0), ok = CARNET.mondes.reduce((a,mo)=>a+doneIn(mo),0);
     m.append(h('div',{class:'cn-wrap'},
       h('div',{class:'row'}, h('div',{class:'cn-t',style:{fontSize:'26px',flex:1}},'Choisis ton composant'), h('span',{class:'cn-t',style:{color:'#16A34A'}}, ok+' / '+tot+' activités réussies')),
-      h('div',{class:'cn-mondes'}, CARNET.mondes.map((mo,mi) => { const d = doneIn(mo);
+      h('div',{class:'cn-mondes'}, ORD().map(mi => { const mo = CARNET.mondes[mi]; const d = doneIn(mo);
         const op = mOpen(mi);
         return h('button',{class:'cn-monde'+(op?'':' lock'),style:{'--mc':mo.couleur},onclick:()=>{ if (op){ view={monde:mi,defi:null}; draw(); } else ouvrir(mi); }},
           h('span',{class:'n'},'COMPOSANT '+(mi+1)), h('b',null,mo.titre), h('span',{class:'muted',style:{fontSize:'13px'}},mo.sous),
-          h('div',{class:'cn-bar'}, h('i',{style:{width:Math.round(100*d/mo.defis.length)+'%'}})), h('span',{style:{fontSize:'13px',fontWeight:800}}, op ? d+' / '+mo.defis.length + (d===mo.defis.length?' 🏆':'') : '🔒 Termine d\'abord le composant '+mi)); }))));
+          h('div',{class:'cn-bar'}, h('i',{style:{width:Math.round(100*d/mo.defis.length)+'%'}})), h('span',{style:{fontSize:'13px',fontWeight:800}}, op ? d+' / '+mo.defis.length + (d===mo.defis.length?' 🏆':'') : !actv(mi) ? '🔒 Pas encore ouvert par le prof' : '🔒 Termine d\'abord : '+CARNET.mondes[prevOf(mi)].titre)); }))));
   }
   function ouvrir(mi){
     const mo = CARNET.mondes[mi]; let v = '';
     modal('🔒 Composant '+(mi+1)+' : '+mo.titre, h('div',null,
-      h('p',null,'Ce composant s\'ouvre quand toutes les activités du composant '+mi+' ('+CARNET.mondes[mi-1].titre+') sont réussies.'),
+      h('p',null, !actv(mi) ? 'Votre professeur n\'a pas encore ouvert ce composant pour votre équipe.' : 'Ce composant s\'ouvre quand toutes les activités de « '+CARNET.mondes[prevOf(mi)].titre+' » sont réussies.'),
       h('div',{class:'fld'}, h('span',null,'Code prof pour l\'ouvrir maintenant'), h('input',{type:'password',autocomplete:'off',oninput:e=>v=e.target.value,onkeydown:e=>{ if(e.key==='Enter') e.target.closest('.modal').querySelector('.mf .pri').click(); }}))),
       [{l:'Fermer'},{l:'Ouvrir',cls:'pri',fn:()=>{ const c = v.toUpperCase().replace(/[^A-Z0-9]/g,'');
         sha16('robotique-carnet:MAITRE:'+c).then(hm => { if (hm!==CARNET.maitre) return toast('Code incorrect'); prof().open = prof().open||{}; prof().open[mo.id] = 1; keep(); push(); view={monde:mi,defi:null}; draw(); toast('Composant ouvert'); }); }}]);
@@ -1875,7 +1941,7 @@ function studentApp(){
   if (hm && hm[1].toUpperCase()!==P.code){ P = {code:hm[1].toUpperCase(), team:null, loc:{done:{},h:{}}}; }
   const keep = () => { try { localStorage.setItem(SKEY, JSON.stringify(P)); } catch(_){} };
   const S = {st:null, lib:{}, ok:false, es:null, waited:false};
-  const asm = makeAssembler((k, obj) => { if (k==='lib') S.lib = obj; else if (k==='st'){ S.st = obj; if (obj.bd) try { localStorage.setItem(BDKEY, JSON.stringify(obj.bd)); } catch(_){} } draw(); });
+  const asm = makeAssembler((k, obj) => { if (k==='lib') S.lib = obj; else if (k==='st'){ S.st = obj; if (obj.bd) try { localStorage.setItem(BDKEY, JSON.stringify(obj.bd)); } catch(_){} if (obj.bh) try { localStorage.setItem(BHKEY, JSON.stringify(obj.bh)); } catch(_){} } draw(); });
   const hd = document.getElementById('hd'), m = document.getElementById('main');
   function connect(){
     if (S.es) S.es.close(); S.st = null; S.lib = {}; S.ok = false; S.waited = false;
@@ -1893,7 +1959,7 @@ function studentApp(){
     const q = teamOf();
     setKids(hd, h('h1',null,'🤖 Robotique'), q ? h('b',{style:{fontSize:'18px'}},q.n) : null, h('span',{class:'sp'}),
       h('button',{title:'Paramètres',onclick:settingsModal},'⚙'),
-      h('button',{title:'Carnet d\'exercices',onclick:()=>{ if (S.es) S.es.close(); const ok = q && (!q.k || P.auth===q.i); carnetApp(ok ? {team:q.n, teamId:q.i, code:P.code, remote:q.c} : {}); }},'📒 Carnet'),
+      h('button',{title:'Carnet d\'exercices',onclick:()=>{ if (S.es) S.es.close(); const ok = q && (!q.k || P.auth===q.i); carnetApp(ok ? {team:q.n, teamId:q.i, code:P.code, remote:q.c, cfg:q.g||null} : {}); }},'📒 Carnet'),
       h('button',{title:'Mémo des blocs mBlock',onclick:()=>blocsModal()},'🧱 Blocs'),
       P.code ? h('span',{class:'livebadge'}, h('span',{class:'dot'+(S.ok?' ok':'')}), S.ok ? 'Connecté' : 'Connexion…') : null,
       q ? h('button',{onclick:()=>{ P.team=null; P.auth=null; keep(); draw(); }},'Changer d\'équipe') : null,
