@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════════
-   Robotique — Service Worker (V1.15.0)
+   Robotique — Service Worker (V1.16.0)
    Fonctionnement hors-ligne après la première visite.
    Stratégie "stale-while-revalidate" : on sert le cache tout de suite
    et on récupère la nouvelle version en arrière-plan.
@@ -7,7 +7,7 @@
    À chaque nouvelle version : incrémenter APP_VERSION (index.html),
    l'en-tête ci-dessus et CACHE_NAME.
    ════════════════════════════════════════════════════════════════════ */
-const CACHE_NAME = 'robotique-v1-15-0';
+const CACHE_NAME = 'robotique-v1-16-0';
 const ASSETS = ['./', './index.html', './manifest.json', './fonts/bungee-shade.woff2', './fonts/bungee.woff2'];
 
 self.addEventListener('install', e => {
@@ -19,7 +19,8 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== location.origin || url.searchParams.has('maj')) return;   // ?maj= : toujours le réseau (contrôle des mises à jour)
   e.respondWith(caches.open(CACHE_NAME).then(async cache => {
     const cached = await cache.match(req, {ignoreSearch: true});
     const net = fetch(req).then(r => { if (r && r.ok) cache.put(req, r.clone()); return r; }).catch(() => cached);
